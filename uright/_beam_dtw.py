@@ -148,7 +148,7 @@ class BeamSearchDTW(object):
 
         # do not normalize for now
         self._active_states = []
-        for key, value in cached.items():
+        for key, value in cached.iteritems():
             (prot_idx, state_idx) = key
             (_, log_alpha) = value
             hp.heappush(self._active_states,(-log_alpha, log_alpha,

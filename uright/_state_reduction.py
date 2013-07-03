@@ -51,7 +51,7 @@ def _compute_path(prototype_dict, test_ink_dict, alpha=0.5, penup_z=10.0):
         return np.argmin(all_d)
 
     path_info = []
-    for key in prototype_dict.keys():
+    for key in prototype_dict:
         p_array = prototype_dict[key]
         all_count = [ np.zeros(p.shape[0]) for p in p_array ]
         all_hit = np.zeros(len(p_array))

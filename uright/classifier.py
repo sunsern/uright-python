@@ -143,7 +143,7 @@ class ClassifierDTW(_Classifier):
         """
         self._trained_prototypes = []
         alldist = []
-        for label in clustered_ink_data.keys():
+        for label in clustered_ink_data:
             for ink_list in clustered_ink_data[label]:
                 if len(ink_list) > self.min_cluster_size:
                     ink_data, weights = zip(*ink_list)
@@ -190,7 +190,7 @@ class ClassifierDTW(_Classifier):
         
         # unpack the reduced prototypes
         trained_prototypes = []
-        for label in reduced_prototypes.keys():
+        for label in reduced_prototypes:
             for i,p in enumerate(reduced_prototypes[label]):
                 prot_obj = PrototypeDTW(label, alpha=self.alpha)
                 prot_obj.model = p
@@ -285,7 +285,7 @@ class ClassifierBeamDTW(ClassifierDTW):
         
         # unpack the reduced prototypes
         trained_prototypes = []
-        for label in reduced_prototypes.keys():
+        for label in reduced_prototypes:
             for i,p in enumerate(reduced_prototypes[label]):
                 prot_obj = PrototypeDTW(label, alpha=self.alpha)
                 prot_obj.model = p
@@ -331,7 +331,7 @@ class ClassifierHMM(_Classifier):
           clustered_ink_data[label] = [ [(ink,weight) from each cluster] ]
         """
         self._trained_prototypes = []
-        for label in clustered_ink_data.keys():
+        for label in clustered_ink_data:
             for ink_list in clustered_ink_data[label]:
                 if len(ink_list) > self.min_cluster_size:
                     ink_data, weights = zip(*ink_list)
