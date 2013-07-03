@@ -67,11 +67,12 @@ def _train_all_prototypes(weighted_ink_list, cluster_info, labels,
                           min_cluster_size=5, center_type='medoid'):
     trained_prototypes = []
     for i in range(len(labels)):
-        trained_prototypes += _train_prototypes(weighted_ink_list[i],
-                                                cluster_info[i][0],
-                                                labels[i],
-                                                min_cluster_size=min_cluster_size,
-                                                center_type=center_type)
+        trained_prototypes += _train_prototypes(
+            weighted_ink_list[i],
+            cluster_info[i][0],
+            labels[i],
+            min_cluster_size=min_cluster_size,
+            center_type=center_type)
     return trained_prototypes
 
 
@@ -106,7 +107,8 @@ class ClusterLinkage(clustering._BaseClusterer):
             prototypes = _train_prototypes(self.weighted_ink_data[i], 
                                            partition, 
                                            self.labels[i])
-            print "candidate for %s has length %d"%(self.labels[i],len(prototypes))
+            print "candidate for %s has length %d"%(self.labels[i], 
+                                                    len(prototypes))
             candidates.append(prototypes)        
 
         for it in range(n_iter):

@@ -1,7 +1,7 @@
 import numpy as np
 
 def _target_weight(user_ink_data, target_id, label):
-    target_count = len(user_ink_data[target_user_id][label])
+    target_count = len(user_ink_data[target_id][label])
     nontarget_count = np.sum([len(user_ink_data[uid][label]) 
                               for uid in user_ink_data 
                               if uid != target_id])

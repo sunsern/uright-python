@@ -112,9 +112,9 @@ class ClusterKMeans(clustering._BaseClusterer):
                  random_state=None, algorithm='hmm'):
         clustering._BaseClusterer.__init__(self, 
                                            user_ink_data, 
-                                           target_user_id, 
-                                           min_cluster_size, 
-                                           maxclust)
+                                           target_user_id=target_user_id, 
+                                           min_cluster_size=min_cluster_size, 
+                                           maxclust=maxclust)
         np.random.seed(random_state)
         
         if algorithm not in ('hmm','dtw'):
