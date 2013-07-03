@@ -1,23 +1,35 @@
+# Prototype (Character model)
+#
+# Author: Sunsern Cheamanunkul (sunsern@gmail.com)
+
+"""
+This module implements different types of prototypes.
+"""
+
 import numpy as np
+
 from sklearn.hmm import normalize
 
+from dtw import compute_dtw_distance, compute_dtw_vector
 from weightedhmm import WeightedGaussianHMM 
-from dtw import (compute_dtw_distance, compute_dtw_vector)
 from inkutils import update_directions
 
 class _Prototype(object):
-    """Base class for Prototype
+    """Prototype base class.
+    
+    An abstract representation of a prototype.
     
     Attributes
-    ---------
+    ----------
     num_obs : int
-       Number of training observation.
+       Number of training observations associated with
+       the prototype.
     
     label : string
-       Corresponding label.
+       Label of the prototype.
     
-    model : Object
-       Underlying model.
+    model : object 
+       The underlying model.
   
     """
     def __init__(self, label):
@@ -37,20 +49,24 @@ class _Prototype(object):
         info['num_obs'] = self.num_obs
         return info
 
-    def fromJSON(self,jsonObj):
-        self.label = jsonObj['label']
-        self.num_obs = jsonObj['num_obs']
+    def fromJSON(self,json_dict):
+        self.label = json_dict['label']
+        self.num_obs = json_dict['num_obs']
 
 
 class PrototypeDTW(_Prototype):
-    """DTW-based prototype 
+    """DTW-based prototype.
+
+    The prototype is simply a sequence of points along the trajactory.
+    The similarity between the prototype and an observation is measured 
+    using the Dynamic Time Warping distance.
 
     Parameters
     ----------
     alpha : float
-       Weighting between location distance and direction distance
-       where alpha=1.0 ignores direction distance and alpha=0.0
-       ignores location distance.
+       Weighting between location distance and direction distance.
+       If alpha=1.0, the direction distance is ignored. If alpha=0.0,
+       the location distance is ignored.
 
     """
     def __init__(self, label, alpha=0.5):
@@ -58,6 +74,7 @@ class PrototypeDTW(_Prototype):
         self.alpha = alpha
 
     def train(self, obs, obs_weights=None, center_type='medoid'):
+        """Estimates the prototype from a set of observations."""
 
         def _find_medoid(obs, obs_weights, distmat):
             n = len(obs)
@@ -70,14 +87,22 @@ class PrototypeDTW(_Prototype):
             f = [compute_dtw_vector(medoid, ink) for ink in obs]
             feature_mat = np.vstack(f)
             feature_mat = np.nan_to_num(feature_mat)
-            weighted_feature_mat = feature_mat * np.tile(obs_weights, 
-                                                         (feature_mat.shape[1],1)).T
+            weighted_feature_mat = feature_mat * np.tile(
+                obs_weights, (feature_mat.shape[1],1)).T
             mean_ink = np.sum(weighted_feature_mat,axis=0) / np.sum(obs_weights)
             mean_ink = np.reshape(mean_ink, (-1,n_features), order='C')
             mean_ink = mean_ink + medoid
-            return update_directions(mean_ink)
+
+            weighted_dists = [obs_weights[i] * 
+                              compute_dtw_distance(mean_ink, obs[i], 
+                                                   alpha=self.alpha) 
+                              for i in xrange(len(obs))]
+            avg_dist = np.sum(weighted_dists) / np.sum(obs_weights)
+
+            return (update_directions(mean_ink), avg_dist)
 
         n = len(obs)
+        self.num_obs = n
 
         if obs_weights is None:
             obs_weights = np.ones(n)
@@ -85,46 +110,58 @@ class PrototypeDTW(_Prototype):
             obs_weights = np.asarray(obs_weights)
 
         if not center_type in ['medoid', 'centroid']:
-            raise ValueError('bad center type')
+            raise ValueError('center_type should be either medoid or centroid.')
 
         # calculate distance matrix
         distMat = np.zeros((n,n))
         for i in xrange(n):
             for j in xrange(i+1,n):
-                distMat[i,j] = compute_dtw_distance(obs[i], 
-                                                    obs[j], 
+                distMat[i,j] = compute_dtw_distance(obs[i], obs[j], 
                                                     alpha=self.alpha)
                 distMat[j,i] = distMat[i,j]
 
         (medoid_idx, avg_min_dist) = _find_medoid(obs, obs_weights, distMat)
         
         if center_type == 'centroid':
-            self.model = _find_centroid(obs, obs_weights, obs[medoid_idx])
+            (self.model, avg_min_dist) = _find_centroid(obs, obs_weights, 
+                                                        obs[medoid_idx])
         else:
-            self.model = obs[medoid_idx]
-
-        self.num_obs = len(obs)
+            self.model = obs[medoid_idx].copy()
 
         return -avg_min_dist
 
     def score(self, obs):
+        """Calculates the score of an observation.
+        
+        The score is defined as negative of the DTW distance.
+
+        Returns
+        -------
+        (score, None)
+
+        """
         dist = compute_dtw_distance(self.model, obs, alpha=self.alpha)
         return -dist, None
 
     def toJSON(self):
+        """Returns a JSON dictionary representing the prototype."""
         info = super(PrototypeDTW, self).toJSON()
         info['alpha'] = self.alpha
         info['center'] = self.model.astype(np.float16).tolist()
         return info
 
     def fromJSON(self,jsonObj):
+        """Initializes the prototype with a JSON dictionary.""" 
         super(PrototypeDTW, self).fromJSON(jsonObj)
         self.alpha = jsonObj['alpha']
         self.model = np.asarray(jsonObj['center'])
 
 
 class PrototypeHMM(_Prototype):
-    """HMM-based prototype
+    """HMM-based prototype.
+
+    This class uses HMM as the underlying model. The similarity is defined
+    in term of the log likelihood.
 
     Parameters
     ----------
@@ -158,7 +195,13 @@ class PrototypeHMM(_Prototype):
         self.skip_transprob = skip_transprob
         
     def train(self, obs, obs_weights=None, max_N=15):
-        """Train the HMM model
+        """Estimates the prototype from a set of observations.
+        
+        Parameters
+        ----------
+        max_N : int
+           The maximum lenght of the HMM.
+      
         """
         if obs_weights is None:
             obs_weights = np.ones(len(obs))
@@ -173,7 +216,7 @@ class PrototypeHMM(_Prototype):
             self.N = min(int(self.num_states * mean_length), max_N)
 
         # transition prob: left-to-right
-        self.transmat = np.zeros((self.N, self.N))
+        self.transmat = np.zeros((self.N,self.N))
         for i in range(self.N):
             self.transmat[i,i] = self.self_transprob
             if i+1 < self.N:
@@ -181,7 +224,7 @@ class PrototypeHMM(_Prototype):
             for j in range(i+2, self.N):
                 self.transmat[i,j] = self.skip_transprob
 
-        self.transmat = normalize(self.transmat,axis=1)
+        self.transmat = normalize(self.transmat, axis=1)
 
         # state prior prob: left-most only
         self.startprob = np.zeros(self.N)
@@ -197,12 +240,23 @@ class PrototypeHMM(_Prototype):
         return self.model.fit(obs, obs_weights=obs_weights)
 
     def score(self, obs):
+        """Calculates the score of an observation.
+        
+        The score is defined as the log likelihood of the observation
+        under the model.
+
+        Returns
+        -------
+        (loglikelihood, fwdlattice)
+
+        """
         obs = np.asarray(obs)
         framelogprob = self.model._compute_log_likelihood(obs)
         logprob, fwdlattice = self.model._do_forward_pass(framelogprob)
         return logprob, fwdlattice
 
     def toJSON(self):
+        """Returns a JSON dictionary representing the prototype."""
         info = super(PrototypeHMM, self).toJSON()
         info['n_components'] = int(self.model.n_components)
         info['n_features'] = int(self.model.n_features)
@@ -214,6 +268,7 @@ class PrototypeHMM(_Prototype):
         return info
 
     def fromJSON(self,jsonObj):
+        """Initializes the prototype with a JSON dictionary.""" 
         super(PrototypeHMM, self).fromJSON(jsonObj)
         self.N = jsonObj['N']
         self.model = WeightedGaussianHMM(self.N, 'diag',

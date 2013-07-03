@@ -1,25 +1,20 @@
+# Adapted from sklearn.hmm 
+
 import string
 import numpy as np
 
-from sklearn import (_hmmc, cluster)
+from sklearn import _hmmc, cluster
 from sklearn.utils.extmath import logsumexp 
-
-from sklearn.hmm import (_BaseHMM, normalize, decoder_algorithms)
+from sklearn.hmm import _BaseHMM, normalize, decoder_algorithms
 from sklearn.mixture import (
     GMM, log_multivariate_normal_density, sample_gaussian,
     distribute_covar_matrix_to_match_covariance_type, _validate_covars)
 
 class _WeightedBaseHMM(_BaseHMM):
-    """Base class for weighted HMM.
-    """
-    def fit(self, obs, obs_weights=None):
-        """Perform EM training
+    """Base class for weighted HMM."""
 
-        Args: 
-           obs: list of numpy 2D arrays where each row corresponds to 
-             each example.
-           obs_weights: 1D numpy array containing weight of each example 
-        """
+    def fit(self, obs, obs_weights=None):
+        """Perform EM training."""
         if obs_weights is None:
             obs_weights = np.ones(len(obs))
 
@@ -56,7 +51,6 @@ class _WeightedBaseHMM(_BaseHMM):
             self._do_mstep(stats, self.params)
         
         #print "log prob = %0.2f"%(curr_logprob)
-
         return logprob[-1]
 
 
@@ -91,6 +85,7 @@ class _WeightedBaseHMM(_BaseHMM):
                 axis=1)
 
 class WeightedGaussianHMM(_WeightedBaseHMM):
+    """Weighted Gaussian HMM"""
     def __init__(self, n_components=1, covariance_type='diag', startprob=None,
                  transmat=None, startprob_prior=None, transmat_prior=None,
                  algorithm="viterbi", means_prior=None, means_weight=1.0,
@@ -181,9 +176,6 @@ class WeightedGaussianHMM(_WeightedBaseHMM):
         self.n_features = obs[0].shape[1]
 
         if 'm' in params:
-            #self._means_ = cluster.KMeans(
-            #    n_clusters=self.n_components).fit(obs[0]).cluster_centers_
-
             # Evenly spaced states 
             indices = np.fix(
                 np.linspace(0,obs[0].shape[0]-1,self.n_components)).astype(int)
@@ -254,7 +246,8 @@ class WeightedGaussianHMM(_WeightedBaseHMM):
                           + self._means_ ** 2 * denom)
                 cv_den = max(covars_weight - 1, 0) + denom
 
-                self._covars_ = ((covars_prior + cv_num + EPS)/(cv_den + EPS)).clip(min=1e-3)
+                self._covars_ = ((covars_prior + cv_num + EPS) / 
+                                 (cv_den + EPS)).clip(min=1e-3)
                 if self._covariance_type == 'spherical':
                     self._covars_ = np.tile(
                         self._covars_.mean(1)[:, np.newaxis],
@@ -278,7 +271,8 @@ class WeightedGaussianHMM(_WeightedBaseHMM):
                                     (cvweight + stats['post'].sum() + EPS))
                 elif self._covariance_type == 'full':
                     self.covars_ = ((covars_prior + cvnum + EPS) /
-                                    (cvweight + stats['post'][:, None, None] + EPS))
+                                    (cvweight + stats['post'][:, None, None] + 
+                                     EPS))
         if 'm' in params:
             prior = self.means_prior
             weight = self.means_weight

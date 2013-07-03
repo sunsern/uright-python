@@ -45,21 +45,21 @@ class TestClassifierDTW(_BaseTest):
         super(TestClassifierDTW,self).setUp()
 
     def test_medoid(self):
-        cDTW = ClassifierDTW(alpha=0.5)
+        cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='medoid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
         print accuracy
         self.assertGreater(accuracy, 85.0)
 
     def test_centroid(self):
-        cDTW = ClassifierDTW(alpha=0.5)
+        cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='centroid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
         print accuracy
         self.assertGreater(accuracy, 87.0)
 
     def test_state_reduction(self):
-        cDTW = ClassifierDTW(alpha=0.5)
+        cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='medoid')
         before = cDTW.trained_prototypes[0].model.shape
         reduced_cDTW = cDTW.state_reduction(self.label_ink_pairs,
@@ -75,7 +75,7 @@ class TestClassifierHMM(_BaseTest):
         super(TestClassifierHMM,self).setUp()
 
     def test_basic(self):
-        cHMM = ClassifierHMM()
+        cHMM = ClassifierHMM(min_cluster_size=10)
         cHMM.train(self.clustered_data)
         accuracy,_,_ = cHMM.test(self.label_ink_pairs)
         print accuracy

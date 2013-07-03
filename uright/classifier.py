@@ -1,10 +1,14 @@
 import numpy as np
 
-from prototype import (PrototypeHMM,PrototypeDTW)
 from _state_reduction import _state_reduction
 from _beam_dtw import BeamSearchDTW
+from prototype import PrototypeHMM,PrototypeDTW
 
-def _max_likelihood(obs, prot_list, log_priors):
+def _max_score(obs, prot_list, log_priors):
+    """
+    Returns the label of the prototype in `prot_list`
+    that has the maximum score (or log likelihood).
+    """
     all_scores = np.empty(len(prot_list))
     for i in xrange(len(prot_list)):
         prot_obj = prot_list[i]
@@ -13,8 +17,8 @@ def _max_likelihood(obs, prot_list, log_priors):
     return prot_list[np.argmax(all_scores)].label
 
 class _Classifier(object):
-    """Maximum likelihood classifier
-    
+    """Maximum likelihood classifier.
+        
     Attributes
     ----------
     trained_prototypes : list
@@ -46,31 +50,33 @@ class _Classifier(object):
     def test(self, label_ink_data, dview=None):
         """Calculates the percent classification accuracy.
     
-        Arguments
-        ---------
+        Parameters
+        ----------
         label_ink_data : list
-           List of label - ink pair.
+           List of label-ink pairs.
 
         dview : IPython.Directview
-           For parallel processing
+           For parallel processing.
 
         Returns
         -------
         (accuracy, true_label, predicted)
         """
         if len(self._trained_prototypes) == 0:
-            raise ValueError('must train classifer before calling test')
+            raise ValueError('trained_prototypes is empty.'
+                             'You must train classifer before calling test')
 
         n = len(label_ink_data)
         true_labels, all_ink = zip(*label_ink_data)
 
         if dview is None:
-            predicted = map(_max_likelihood,
+            predicted = map(_max_score,
                             all_ink,
                             [self._trained_prototypes] * n,
                             [self.log_priors] * n)
         else:
-            predicted = dview.map_sync(_max_likelihood,
+            # IPython parallel map
+            predicted = dview.map_sync(_max_score,
                                        all_ink,
                                        [self._trained_prototypes] * n,
                                        [self.log_priors] * n)
@@ -84,9 +90,9 @@ class _Classifier(object):
     def classify(self, obs):
         """Classify observation using the model."""
         if len(self._trained_prototypes) > 0:
-            return _max_likelihood(obs, 
-                                   self._trained_prototypes, 
-                                   self.log_priors)
+            return _max_score(obs, 
+                              self._trained_prototypes, 
+                              self.log_priors)
         else:
             return None
 
@@ -105,17 +111,16 @@ class _Classifier(object):
 
 class ClassifierDTW(_Classifier):
     """Classifier with DTW prototypes
-
-    Parameters
+    
+    Attributes
     ----------
     min_cluster_size : int
-       Minimum number of examples in a cluster
-    
+      Minimum number of examples in a cluster.
+
     alpha : float
-       Defult alpha for DTW algorithm
-      
+      Defult alpha for DTW algorithm      
     """
-    def __init__(self, min_cluster_size=10, alpha=0.5):
+    def __init__(self, min_cluster_size=5, alpha=0.5):
         _Classifier.__init__(self)
         self.min_cluster_size = min_cluster_size
         self.alpha = alpha
@@ -123,7 +128,19 @@ class ClassifierDTW(_Classifier):
     def _compute_log_priors(self):
         self.log_priors = np.zeros(len(self._trained_prototypes))
 
-    def train(self, clustered_ink_data, center_type='medoid'):
+    def train(self, clustered_ink_data, center_type='medoid', verbose=False):
+        """Trains the classifier.
+
+        Parameters
+        ----------
+        clustered_ink_data : dictionary
+           Training data with the following structure.
+           clustered_ink_data[label][cluster_id] = [ink1, ink2, ... inkN]
+
+        center_type : {'medoid', 'centroid'}
+           Type of the DTW center.
+       
+        """
         self._trained_prototypes = []
         alldist = []
         for label in clustered_ink_data.keys():
@@ -136,13 +153,23 @@ class ClassifierDTW(_Classifier):
                                           center_type=center_type)
                     self._trained_prototypes.append(proto)
                     alldist.append(avgdist)
-                    print "Prototype for %s (%d instances, avg.dist = %0.2f)"%(
-                        label, len(ink_list), avgdist) 
+                    if verbose:
+                        print ("Prototype for "
+                               "%s (%d instances, avg.dist = %0.2f)"%(
+                                label, len(ink_list), avgdist))
         self._compute_log_priors()
         
-    def state_reduction(self, test_ink, n_iter=30, threshold=0.5):
-        """
-        Returns a new instance of ClassifierDTW
+    def state_reduction(self, test_ink, n_iter=30):
+        """Performs state reduction on the trained prototypes.
+
+        Parameters
+        ----------
+        test_ink : list
+           List of observations.
+
+        n_iter : int
+           Number of iterations to perfrom reduction.
+
         """
         test_ink_dict = {}
         for label, ink in test_ink:
@@ -182,15 +209,22 @@ class ClassifierDTW(_Classifier):
 class ClassifierBeamDTW(ClassifierDTW):
     """Beam-search DTW classifier
     
-    The DTW prototypes should be state-reduced.
-    
     Parameters
     ----------
+    min_cluster_size : int
+      Minimum number of examples in a cluster.
+
+    alpha : float
+      Alpha for DTW algorithm (used in training)
+        
     beam_width : int, None
-       Number of states kept in memeory at each time step
+      Number of states kept in memeory at each time step.
+
+    beam_alpha : float
+      Alpha for the beam decoding (used in classify) 
 
     """
-    def __init__(self, min_cluster_size=10, alpha=0.5, 
+    def __init__(self, min_cluster_size=5, alpha=0.5, 
                  beam_width=None, beam_alpha=0.5):
         ClassifierDTW.__init__(self, 
                                min_cluster_size=min_cluster_size, 
@@ -208,7 +242,7 @@ class ClassifierBeamDTW(ClassifierDTW):
     
     def test(self, label_ink_data):
         if len(self._trained_prototypes) == 0:
-            raise ValueError('no prototypes in the classifier.')
+            raise ValueError('No prototypes in the classifier.')
 
         n = len(label_ink_data)
         true_labels, all_ink = zip(*label_ink_data)
@@ -218,7 +252,6 @@ class ClassifierBeamDTW(ClassifierDTW):
         accuracy = 100.0 * np.sum(true_labels == predicted) / n
         return (accuracy, true_labels, predicted)
 
-
     def classify(self, obs):
         self.beam.reset()
         for i in range(obs.shape[0]):
@@ -227,7 +260,7 @@ class ClassifierBeamDTW(ClassifierDTW):
         return self._trained_prototypes[np.argmax(ll)].label
 
 
-    def state_reduction(self, test_ink, n_iter=30, threshold=0.5):
+    def state_reduction(self, test_ink, n_iter=30):
         """
         Returns a new instance of ClassifierDTW
         """
@@ -270,7 +303,7 @@ class ClassifierBeamDTW(ClassifierDTW):
 class ClassifierHMM(_Classifier):
     """Classifier with HMM-based prototypes
     
-    Parameters
+    Attributes
     ----------
     min_cluster_size : int
        Minimum number of examples in a cluster
@@ -285,11 +318,11 @@ class ClassifierHMM(_Classifier):
                                  for proto in self._trained_prototypes])
         self.log_priors = np.log(num_examples / np.sum(num_examples))
 
-    def train(self, clustered_ink_data):
+    def train(self, clustered_ink_data, verbose=False):
         """Train the classifier from clustered_data
         
-        Arguments
-        --------
+        Parameters
+        ----------
         clustered_ink_data : dictionary
           clustered_ink_data[label] = [ [(ink,weight) from each cluster] ]
         """
@@ -301,8 +334,10 @@ class ClassifierHMM(_Classifier):
                     proto = PrototypeHMM(label)
                     loglike = proto.train(ink_data, obs_weights=weights)
                     self._trained_prototypes.append(proto)
-                    print "Prototype for %s (%d instances, avg_ll = %0.1f)"%(
-                        label, len(ink_list), loglike/len(ink_list)) 
+                    if verbose:
+                        print ("Prototype for "
+                               "%s (%d instances, avg_ll = %0.1f)"%(
+                                label, len(ink_list), loglike/len(ink_list)))
         self._compute_log_priors()
         
     def toJSON(self):
