@@ -63,7 +63,7 @@ class TestClassifierDTW(_BaseTest):
         cDTW.train(self.clustered_data,center_type='medoid')
         before = cDTW.trained_prototypes[0].model.shape
         reduced_cDTW = cDTW.state_reduction(self.label_ink_pairs,
-                                            n_iter=10)
+                                            n_iter=10, verbose=True)
         after = reduced_cDTW.trained_prototypes[0].model.shape
         accuracy,_,_ = reduced_cDTW.test(self.label_ink_pairs)
         print accuracy

@@ -159,7 +159,7 @@ class ClassifierDTW(_Classifier):
                                 label, len(ink_list), avgdist))
         self._compute_log_priors()
         
-    def state_reduction(self, test_ink, n_iter=30):
+    def state_reduction(self, test_ink, n_iter=30, verbose=False):
         """Performs state reduction on the trained prototypes.
 
         Parameters
@@ -184,7 +184,9 @@ class ClassifierDTW(_Classifier):
                                     []).append(prot_obj.num_obs)
 
         # run the state reduction algorithm
-        reduced_prototypes = _state_reduction(prototype_dict, test_ink_dict)
+        reduced_prototypes = _state_reduction(prototype_dict, 
+                                              test_ink_dict,
+                                              verbose=verbose)
         
         # unpack the reduced prototypes
         trained_prototypes = []
@@ -260,7 +262,7 @@ class ClassifierBeamDTW(ClassifierDTW):
         return self._trained_prototypes[np.argmax(ll)].label
 
 
-    def state_reduction(self, test_ink, n_iter=30):
+    def state_reduction(self, test_ink, n_iter=30, verbose=False):
         """
         Returns a new instance of ClassifierDTW
         """
@@ -277,7 +279,9 @@ class ClassifierBeamDTW(ClassifierDTW):
                                     []).append(prot_obj.num_obs)
 
         # run the state reduction algorithm
-        reduced_prototypes = _state_reduction(prototype_dict, test_ink_dict)
+        reduced_prototypes = _state_reduction(prototype_dict, 
+                                              test_ink_dict,
+                                              verbose=verbose)
         
         # unpack the reduced prototypes
         trained_prototypes = []

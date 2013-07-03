@@ -68,12 +68,12 @@ def _compute_path(prototype_dict, test_ink_dict, alpha=0.5, penup_z=10.0):
     return path_info
 
 
-def _merge_bad_states(prototype, path_fraction, threshold=0.50):
+def _merge_bad_states(prototype, path_fraction, threshold=0.50, verbose=False):
     path_fraction = np.asarray(path_fraction)
     plen = prototype.shape[0]
     minidx = np.argmin(path_fraction)
     if prototype[minidx,_PU_IDX] > 0:
-        #print "skip"
+        if verbose: print "[merge] skip"
         return prototype
 
     t = np.amin(path_fraction)
@@ -89,11 +89,11 @@ def _merge_bad_states(prototype, path_fraction, threshold=0.50):
             ui += 1
 
         if li == ui:
-            #print "delete %d"%li
+            if verbose: print "[merge] delete %d"%li
             new_proto = np.delete(prototype,ui,axis=0)
             return new_proto
         elif li > 0 and ui < plen - 1:            
-            #print "merge ",li,ui
+            if verbose: print "[merge] merge %d %d"%(li,ui)
             avg_state = np.mean(prototype[li:ui+1,:],axis=0)
             # recompute the pen direction
             dx = avg_state[_DX_IDX]
@@ -104,7 +104,6 @@ def _merge_bad_states(prototype, path_fraction, threshold=0.50):
             avg_state[_DX_IDX] = dx
             avg_state[_DY_IDX] = dy
             # new prototype
-            #avg_state = np.reshape(avg_state,(1,5))
             new_proto = np.delete(prototype,
                                   range(max(li,0),min(ui+1,plen)),
                                   axis=0)
@@ -124,27 +123,30 @@ def _remove_useless_states(prototype, path_fraction, threshold=0.01):
 
 def _state_reduction(prototype_dict, test_ink_dict, 
                      n_iter=30, merge_threshold=0.5, 
-                     remove_threshold=0.01):
+                     remove_threshold=0.01, verbose=False):
     prototypes = prototype_dict.copy()
     for it in range(n_iter):
         path_info = _compute_path(prototypes, test_ink_dict)
         reduced_prototypes = {}
         old_total_length = 0
         new_total_length = 0
+        if verbose: print "[state-reduction] iter %d"%it
         for label,old_proto,count,hit in path_info:
             if hit > 0:
                 fraction = np.asarray(count) / hit 
-                #print fraction, old_proto.shape[0]
                 old_total_length += old_proto.shape[0]
-                (new_proto,fraction) = _remove_useless_states(old_proto,
-                                                              fraction,
-                                                              threshold=remove_threshold)
-                #print fraction, new_proto.shape[0]
+
+                (new_proto,fraction) = _remove_useless_states(
+                    old_proto, fraction, threshold=remove_threshold)
+
                 new_proto = _merge_bad_states(new_proto,fraction,
-                                              threshold=merge_threshold)
-                #print new_proto.shape[0]
+                                              threshold=merge_threshold,
+                                              verbose=verbose)
                 new_total_length += new_proto.shape[0]
                 reduced_prototypes.setdefault(label,[]).append(new_proto)
+                if verbose: print " > %s: %d -> %d"%(label, 
+                                                     old_proto.shape[0], 
+                                                     new_proto.shape[0])
 
         prototypes = reduced_prototypes
 
