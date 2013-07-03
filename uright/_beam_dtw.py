@@ -1,10 +1,10 @@
 import numpy as np
 import heapq as hp
-import math
+from math import log, exp
 
+from _dtwc import _compute_pairwise_distance
 from inkutils import INK_STRUCT
 from prototype import PrototypeDTW
-from _dtwc import _compute_pairwise_distance
 
 _X_IDX = INK_STRUCT['X_IDX']
 _Y_IDX = INK_STRUCT['Y_IDX']
@@ -13,12 +13,17 @@ _DY_IDX = INK_STRUCT['DY_IDX']
 _PU_IDX = INK_STRUCT['PU_IDX']
 _EPS = 0.2
 
-def _logsumexp(a,b):
-    c = max(a,b)
-    return c + math.log(math.exp(a-c) + math.exp(b-c))
-
 def _max(a,b):
-    return max(a,b)
+    if a < b: return b
+    else: return a
+
+def _min(a,b):
+    if a < b: return a
+    else: return b
+    
+def _logsumexp(a,b):
+    c = _max(a,b)
+    return c + log(exp(a-c) + exp(b-c))
 
 class BeamSearchDTW(object):
     """Beam-search DTW
@@ -114,48 +119,41 @@ class BeamSearchDTW(object):
                 point[_X_IDX] = (point[_X_IDX] - mean_x) / max(h, _EPS)
                 point[_Y_IDX] = (point[_Y_IDX] - mean_y) / max(h, _EPS)
 
-        hash_log_alpha = {}
-        hash_log_emitprob = {}
-        state_count = 0
+        cached = {}
         combine = self._combine
-        while (self._active_states and (state_count < self.max_states)):
+        _beam_alpha_ = self.alpha
+        _beam_penup_ = self.penup_penalty
+        state_count = 0
+        while (self._active_states and state_count < self.max_states):
             (_, logprob, i, j) = hp.heappop(self._active_states)
             proto = self.centers[i]
-            for k in xrange(j, min(j+1+self.skips, proto.shape[0])):
-                
-                # we don't allow k = -1 to re-enter the queue.
-                if k < 0:
-                    continue
-
+            for k in xrange(_max(j,0), _min(j+1+self.skips, proto.shape[0])):
                 hashkey = (i,k)
-                if hashkey in hash_log_emitprob:
-                    log_d = hash_log_emitprob[hashkey]
+                if hashkey in cached:
+                    (log_d, log_alpha) = cached[hashkey]
+                    cached[hashkey] = (log_d, combine(log_alpha, 
+                                                      logprob + log_d))
                 else:
                     log_d = -(_compute_pairwise_distance(point, 
                                                          proto[k,:],
-                                                         self.alpha,
-                                                         self.penup_penalty))
-                    hash_log_emitprob[hashkey] = log_d
-
-                if hashkey in hash_log_alpha:
-                    hash_log_alpha[hashkey] = combine(hash_log_alpha[hashkey], 
-                                                      logprob + log_d)
-                else:
-                     hash_log_alpha[hashkey]= logprob + log_d
+                                                         _beam_alpha_,
+                                                         _beam_penup_))
+                    cached[hashkey] = (log_d, logprob + log_d)
                 
                 # only incur cost when not staying in the same state 
-                if k > j:
+                if k > j: 
                     logprob += log_d
 
             state_count += 1
-             
+
         # do not normalize for now
         self._active_states = []
-        for key,log_alpha in hash_log_alpha.items():
+        for key, value in cached.items():
             (prot_idx, state_idx) = key
-            hp.heappush(self._active_states,(-log_alpha,log_alpha,
-                                              prot_idx,state_idx))
-        
+            (_, log_alpha) = value
+            hp.heappush(self._active_states,(-log_alpha, log_alpha,
+                                              prot_idx, state_idx))
+            
         # update normalization info
         if (self.normalization and org_point[_PU_IDX] < 1):
             self.sum_x += org_point[_X_IDX]
