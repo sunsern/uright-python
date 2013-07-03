@@ -1,6 +1,3 @@
-#cython: boundscheck=False
-#cython: wraparound=False
-
 from libc.math cimport sqrt
 import numpy as np
 cimport numpy as np
@@ -18,7 +15,8 @@ ctypedef np.float64_t dtype_t
 
 cdef dtype_t _MIN_STDEV = 1e-3
 
-
+@cython.boundscheck(False)
+@cython.wraparound(False)
 def _compute_pairwise_distance(np.ndarray[dtype_t, ndim=1] p not None, 
                                np.ndarray[dtype_t, ndim=1] q not None,
                                dtype_t alpha, 
@@ -36,6 +34,9 @@ def _compute_pairwise_distance(np.ndarray[dtype_t, ndim=1] p not None,
         return (alpha*location_d + (1 - alpha)*direction_d)
 
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
 def _compute_combined_distance(np.ndarray[dtype_t, ndim=2] ink_array1 not None,
                                np.ndarray[dtype_t, ndim=2] ink_array2 not None,
                                dtype_t alpha, 
@@ -81,37 +82,40 @@ def _compute_combined_distance(np.ndarray[dtype_t, ndim=2] ink_array1 not None,
         stdev_dir = _MIN_STDEV
 
     penup_penalty = max(penup_z * (stdev_xy * alpha + 
-                                   stdev_dir * (1-alpha)), 1.0)
+                                   stdev_dir * (1 - alpha)), 1.0)
     
     d_combined = ((alpha / stdev_xy ) * d_xy + 
-                  ((1-alpha) / stdev_dir) * d_dir)
+                  ((1 - alpha) / stdev_dir) * d_dir)
     
     d_combined[or_penup > 0] = penup_penalty
     d_combined[and_penup > 0] = 0.0
 
     return d_combined
 
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
 def _execute_dtw_in_c(np.ndarray[dtype_t, ndim=2] d_combined, 
                       int m, int n):
 
-    cdef np.ndarray[dtype_t,ndim=2] dtw
-    cdef np.ndarray[np.int_t,ndim=2] pl
+    cdef np.ndarray[dtype_t, ndim=2] dtw
+    cdef np.ndarray[np.int_t, ndim=2] pl
     cdef int i,j
     cdef dtype_t t1,t2,t3
     
     dtw = np.zeros((n,m))
-    pl = np.zeros((n,m),dtype=np.int)
+    pl = np.zeros((n,m), dtype=np.int)
     
-    for i in range(1,n):
+    for i in xrange(1,n):
         dtw[i,0] = dtw[i-1,0] + d_combined[i,0]
         pl[i,0] = pl[i-1,0] + 1
 
-    for j in range(1,m):
+    for j in xrange(1,m):
         dtw[0,j] = dtw[0,j-1] + d_combined[0,j]
         pl[0,j] = pl[0,j-1] + 1
         
-    for i in range(1,n):
-        for j in range(1,m):
+    for i in xrange(1,n):
+        for j in xrange(1,m):
             t1 = dtw[i-1,j]
             t2 = dtw[i-1,j-1]
             t3 = dtw[i,j-1]
