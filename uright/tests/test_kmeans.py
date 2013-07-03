@@ -7,7 +7,7 @@ from inkutils import (json2array,
                       normalize_ink,
                       filter_bad_ink)
 
-from classifier import ClassifierHMM
+from classifier import ClassifierHMM, ClassifierDTW
 from clustering import ClusterKMeans
 
 class _BaseTest(unittest.TestCase):
@@ -43,6 +43,26 @@ class TestKMeans(_BaseTest):
         super(TestKMeans,self).setUp()
 
     def test_basic(self):
+        km = ClusterKMeans(self.user_ink_data,algorithm='dtw')
+        clustered_data = km.clustered_data()
+        chmm = ClassifierDTW()
+        chmm.train(clustered_data, center_type='centroid')
+        accuracy,_,_ = chmm.test(self.label_ink_pairs)
+        print accuracy
+        self.assertGreater(accuracy, 90.0)
+
+    def test_optimize(self):
+        km = ClusterKMeans(self.user_ink_data,algorithm='dtw')
+        km.optimize_cluster_num(self.label_ink_pairs)
+        clustered_data = km.clustered_data()
+        chmm = ClassifierDTW()
+        chmm.train(clustered_data, center_type='centroid')
+        accuracy,_,_ = chmm.test(self.label_ink_pairs)
+        print accuracy
+        self.assertGreater(accuracy, 90.0)
+
+    """
+    def test_basic(self):
         km = ClusterKMeans(self.user_ink_data)
         clustered_data = km.clustered_data()
         chmm = ClassifierHMM()
@@ -60,6 +80,6 @@ class TestKMeans(_BaseTest):
         accuracy,_,_ = chmm.test(self.label_ink_pairs)
         print accuracy
         self.assertGreater(accuracy, 90.0)
-
+    """
 if __name__ == "__main__":
     unittest.main()
