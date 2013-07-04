@@ -25,7 +25,7 @@ def _should_terminate(partitions, threshold=2):
 
 def _perform_kmeans(algorithm, label, obs, obs_weights=None, 
                     K=4, n_iter=10, init_partition=None,
-                    min_cluster_size=10):
+                    min_cluster_size=10, verbose=False):
 
     def _rep(s, m):
         a, b = divmod(m, len(s))
@@ -55,7 +55,6 @@ def _perform_kmeans(algorithm, label, obs, obs_weights=None,
         init_partition = np.array(init_partition, dtype=np.int)
         
     partitions = [ init_partition ]
-    print partitions[-1]
     for it in range(n_iter):
         # Train prototypes using current cluster assignment
         trained_prototypes = []
@@ -82,16 +81,15 @@ def _perform_kmeans(algorithm, label, obs, obs_weights=None,
             curr_ll += ll
             
         partitions.append(new_partition)
-        print "ll = %0.2f"%(curr_ll)
+        if verbose: print "[label=%s] ll = %0.2f"%(label, curr_ll)
         
         # check stop conditions
         if _should_terminate(partitions):
             break
 
-    print (partitions[-1]+1)
     return (curr_ll, (partitions[-1] + 1), trained_prototypes)
 
-def _partition_subset(packed_data):
+def _partition_subset(packed_data, verbose=False):
     ink_data, weights = zip(*packed_data[0])
     label = packed_data[1]
     K = packed_data[2]
@@ -102,7 +100,8 @@ def _partition_subset(packed_data):
                                           ink_data,  
                                           obs_weights=weights, 
                                           K=K, 
-                                          min_cluster_size=min_cluster_size)
+                                          min_cluster_size=min_cluster_size,
+                                          verbose=verbose)
     return (partition,prots)
 
 class ClusterKMeans(clustering._BaseClusterer):
@@ -123,32 +122,33 @@ class ClusterKMeans(clustering._BaseClusterer):
         self.algorithm = algorithm    
         
     def optimize_cluster_num(self, test_data, n_iter=30, 
-                             threshold=0.001, dview=None):
+                             threshold=0.001, dview=None,
+                             verbose=False):
 
         if self.algorithm == 'hmm':
             classifier_class = ClassifierHMM
         else:
             classifier_class = ClassifierDTW            
 
-        # start with 1 prototype for each label
         n = len(self.labels)
+        # start with 1 prototype for each label
         temp_n_clusters = np.ones(n, dtype=np.int) 
         cluster_info = self._partition_data(temp_n_clusters.tolist(),
                                             dview=dview)
-
+        # gather the trained prototypes
         trained_prototypes = []
         for _,prots in cluster_info:
             for prot_obj in prots:
                 if prot_obj is not None:
                     trained_prototypes.append(prot_obj)
-                  
+        # test the trained prototypes with test data         
         curr_classifier = classifier_class()
         curr_classifier.trained_prototypes =  trained_prototypes
         (accuracy,_,_) = curr_classifier.test(test_data,dview=dview)
         error_rates = [1.0 - accuracy / 100.0]
         n_clusters = [temp_n_clusters.copy()]
         added_labels = []
-        print error_rates, n_clusters[-1]
+        if verbose: print error_rates, n_clusters[-1]
 
         # compute all candidates
         candidates = []
@@ -157,13 +157,14 @@ class ClusterKMeans(clustering._BaseClusterer):
                                          self.labels[i], 
                                          temp_n_clusters[i]+1,
                                          self.min_cluster_size,
-                                         self.algorithm))
+                                         self.algorithm),
+                                         verbose=verbose)
             # remove None from prots
             prots = [p for p in prots if p is not None]
             candidates.append(prots)        
 
         for it in range(n_iter):
-            print "Iteration %d"%it
+            if verbose: print "Iteration %d"%it
             # find the most beneficial class to increse prototype by 1
             min_error = 1.0
             min_idx = None
@@ -184,9 +185,10 @@ class ClusterKMeans(clustering._BaseClusterer):
                                   if p.label != self.labels[i]]
                     prototypes += candidates[i]
                     test_classifier.trained_prototypes = prototypes
-                    (accuracy,_,_) = test_classifier.test(test_data,dview=dview)
+                    (accuracy,_,_) = test_classifier.test(test_data,
+                                                          dview=dview)
                     error = 1.0 - accuracy / 100.0
-                    print "> %f"%error
+                    if verbose: print "> %f"%error
 
                 if (error < min_error):
                     min_error = error
@@ -195,7 +197,7 @@ class ClusterKMeans(clustering._BaseClusterer):
                     
             # Stop if no update found or error reduction is small
             if (min_idx is None) or (error_rates[-1] - min_error < threshold):
-                print "no improvement. done."
+                if verbose: print "no improvement. done."
                 break
             
             # choose the min_idx
@@ -205,9 +207,10 @@ class ClusterKMeans(clustering._BaseClusterer):
             n_clusters.append(temp_n_clusters.copy())
             curr_classifier = best_classifier
 
-            print error_rates
-            print n_clusters
-            print "choosing %s"%self.labels[min_idx]
+            if verbose:
+                print error_rates
+                print n_clusters
+                print "choosing %s"%self.labels[min_idx]
 
             # replace the candidate if needed
             if (temp_n_clusters[min_idx]+1 <= self.maxclust):
@@ -245,8 +248,9 @@ class ClusterKMeans(clustering._BaseClusterer):
             label = self.labels[i]            
             data[label] = []
             for k in range(self.n_clusters[i]):
-                clustered_obs = [self.weighted_ink_data[i][j]
-                                 for j in range(len(self.weighted_ink_data[i])) 
-                                 if cluster_info[i][0][j] == (k+1)]
+                clustered_obs = [
+                    self.weighted_ink_data[i][j]
+                    for j in range(len(self.weighted_ink_data[i])) 
+                    if cluster_info[i][0][j] == (k+1)]
                 data[label].append(clustered_obs)
         return data

@@ -1,3 +1,4 @@
+import os.path
 import numpy as np
 import unittest
 import pickle
@@ -11,15 +12,16 @@ from prototype import (PrototypeDTW,
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
-        filename = "tests/candidate_prototypes_1368819209.p"
-        candidate_proto = pickle.load(open(filename,"rb"))
-
+        fn = os.path.join(os.path.dirname(__file__), 'clustered_data.p')
+        candidate_proto = pickle.load(open(fn,"rb"))
+        # set test label
         self.label = 'u'
         clustered_data = []
         for _,examples in candidate_proto[self.label]:
             data = [np.nan_to_num(normalize_ink(json2array(ink)))
                     for ink in filter_bad_ink(examples)]
             clustered_data.append(data)
+        # set test cluster
         self.ink_data = clustered_data[1]
 
 class TestPrototypeDTW(_BaseTest):

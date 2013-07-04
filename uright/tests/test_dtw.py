@@ -94,31 +94,34 @@ class _BaseTest(unittest.TestCase):
 
 
 class TestComputeDTWDistance(_BaseTest):
-    def test_basic(self):
-        self.assertAlmostEqual(compute_dtw_distance(self.ink1,
-                                                    self.ink1,
-                                                    alpha=0.5,
-                                                    penup_z=10), 
-                               0.000, delta=1e-3)
-        self.assertAlmostEqual(compute_dtw_distance(self.ink1,
-                                                    self.ink2,
-                                                    alpha=0.5,
-                                                    penup_z=10),
-                               0.058, delta=1e-3)
-        self.assertAlmostEqual(compute_dtw_distance(self.ink1,
-                                                    self.ink3,
-                                                    alpha=0.5,
-                                                    penup_z=10), 
-                               0.044, delta=1e-3)
+    def test_simple(self):
+        self.assertAlmostEqual(
+            compute_dtw_distance(self.ink1,
+                                 self.ink1,
+                                 alpha=0.5,
+                                 penup_z=10), 
+            0.000, delta=1e-3)
+        self.assertAlmostEqual(
+            compute_dtw_distance(self.ink1,
+                                 self.ink2,
+                                 alpha=0.5,
+                                 penup_z=10),
+            0.058, delta=1e-3)
+        self.assertAlmostEqual(
+            compute_dtw_distance(self.ink1,
+                                 self.ink3,
+                                 alpha=0.5,
+                                 penup_z=10), 
+            0.044, delta=1e-3)
 
 class TestComputeDTWVector(_BaseTest):
-    def test_basic(self):
+    def test_sanity(self):
         v1 =  compute_dtw_vector(self.ink1, 
                                  self.ink3, 
                                  alpha=0.5,
                                  penup_z=10)
         self.assertEqual(v1.shape, (140,))
-
+        
         v2 =  compute_dtw_vector(self.ink2, 
                                  self.ink3, 
                                  alpha=0.5,

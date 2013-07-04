@@ -1,3 +1,4 @@
+import os.path
 import numpy as np
 import unittest
 import pickle
@@ -13,13 +14,13 @@ from classifier import (ClassifierDTW,
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
+        fn = os.path.join(os.path.dirname(__file__), 'clustered_data.p')
+        candidate_proto = pickle.load(open(fn,"rb"))
+        
+        # fix random seed
         random.seed(12345)
 
-        filename = "tests/candidate_prototypes_1368819209.p"
-        candidate_proto = pickle.load(open(filename,"rb"))
-
         max_examples = 20
-
         clustered_data = {}
         label_ink_pairs = []
         for label in ['a','u','v']:
@@ -48,14 +49,12 @@ class TestClassifierDTW(_BaseTest):
         cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='medoid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
-        print accuracy
         self.assertGreater(accuracy, 85.0)
 
     def test_centroid(self):
         cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='centroid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
-        print accuracy
         self.assertGreater(accuracy, 87.0)
 
     def test_state_reduction(self):
@@ -63,10 +62,10 @@ class TestClassifierDTW(_BaseTest):
         cDTW.train(self.clustered_data,center_type='medoid')
         before = cDTW.trained_prototypes[0].model.shape
         reduced_cDTW = cDTW.state_reduction(self.label_ink_pairs,
-                                            n_iter=10, verbose=True)
+                                            n_iter=10, 
+                                            verbose=False)
         after = reduced_cDTW.trained_prototypes[0].model.shape
         accuracy,_,_ = reduced_cDTW.test(self.label_ink_pairs)
-        print accuracy
         self.assertGreater(accuracy, 88.0)
         self.assertGreaterEqual(before, after)
 
@@ -74,22 +73,20 @@ class TestClassifierHMM(_BaseTest):
     def setUp(self):
         super(TestClassifierHMM,self).setUp()
 
-    def test_basic(self):
+    def test_simple(self):
         cHMM = ClassifierHMM(min_cluster_size=10)
         cHMM.train(self.clustered_data)
         accuracy,_,_ = cHMM.test(self.label_ink_pairs)
-        print accuracy
         self.assertGreater(accuracy, 92.0)
         
 class TestClassifierBeamDTW(_BaseTest):
     def setUp(self):
         super(TestClassifierBeamDTW,self).setUp()
 
-    def test_basic(self):
+    def test_simple(self):
         beam = ClassifierBeamDTW()
         beam.train(self.clustered_data)
         accuracy,_,_ = beam.test(self.label_ink_pairs)
-        print accuracy
         self.assertGreater(accuracy, 85.0)
     
 if __name__ == "__main__":

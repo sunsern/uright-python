@@ -8,7 +8,9 @@ from classifier import ClassifierDTW
 from dtw import compute_dtw_distance
 
 def _perform_linkage(obs, max_cluster, distmat=None, 
-                     alpha=0.5, penup_z=10.0, algorithm='complete'):
+                     alpha=0.5, penup_z=10.0, 
+                     algorithm='complete',
+                     verbose=False):
     n = len(obs)
     
     if max_cluster == 1:
@@ -20,7 +22,7 @@ def _perform_linkage(obs, max_cluster, distmat=None,
 
     # calculate distance matrix
     if distmat is None:
-        print "calculating distmat"
+        if verbose: print "calculating distmat"
         distmat = np.zeros((n,n))
         for i in range(n):
             for j in range(i+1,n):
@@ -36,13 +38,14 @@ def _perform_linkage(obs, max_cluster, distmat=None,
                                        criterion='maxclust')
     return (np.asarray(fc), distmat)
     
-def _partition_subset(packed_data, distmat=None):
+def _partition_subset(packed_data, distmat=None, verbose=False):
     ink_data, _ = zip(*packed_data[0])
     label = packed_data[1]
     n_cluster = packed_data[2]
-    print "clustering %s"%label
     (partition, distmat) = _perform_linkage(ink_data, n_cluster, distmat)
-    print partition
+    if verbose:
+        print "clustering %s"%label
+        print partition
     return (partition, distmat)
 
 def _train_prototypes(weighted_ink, partition, label, 
@@ -79,7 +82,7 @@ def _train_all_prototypes(weighted_ink_list, cluster_info, labels,
 class ClusterLinkage(clustering._BaseClusterer):
     """Cluster data with Linkage algorithm"""
     def optimize_cluster_num(self, test_data, n_iter=30, 
-                             threshold=0.001, dview=None):
+                             threshold=0.001, dview=None, verbose=False):
         # start with 1 prototype for each label
         temp_n_clusters = np.ones(len(self.labels),dtype=np.int) 
         cluster_info = self._partition_data(temp_n_clusters.tolist(),
@@ -95,7 +98,7 @@ class ClusterLinkage(clustering._BaseClusterer):
         error_rates = [1.0 - accuracy / 100.0]
         n_clusters = [temp_n_clusters.copy()]
         added_labels = []
-        print error_rates
+        if verbose: print error_rates
 
         # compute all candidates
         candidates = []
@@ -103,16 +106,17 @@ class ClusterLinkage(clustering._BaseClusterer):
             partition,_ = _partition_subset((self.weighted_ink_data[i], 
                                              self.labels[i], 
                                              temp_n_clusters[i]+1),
-                                            distmat=distmats[i])
+                                            distmat=distmats[i],
+                                            verbose=verbose)
             prototypes = _train_prototypes(self.weighted_ink_data[i], 
                                            partition, 
                                            self.labels[i])
-            print "candidate for %s has length %d"%(self.labels[i], 
-                                                    len(prototypes))
+            if verbose: print "candidate for %s has length %d"%(
+                self.labels[i], len(prototypes))
             candidates.append(prototypes)        
 
         for it in range(n_iter):
-            print "Iteration %d"%it
+            if verbose: print "Iteration %d"%it
             # find the most beneficial class to increse prototype by 1
             min_error = 1.0
             min_idx = None
@@ -133,9 +137,10 @@ class ClusterLinkage(clustering._BaseClusterer):
                                   if p.label != self.labels[i]]
                     prototypes += candidates[i]
                     test_classifier.trained_prototypes = prototypes
-                    (accuracy,_,_) = test_classifier.test(test_data,dview=dview)
+                    (accuracy,_,_) = test_classifier.test(test_data, 
+                                                          dview=dview)
                     error = 1.0 - accuracy / 100.0
-                    print "> %f"%error
+                    if verbose: print "> %f"%error
 
                 if (error < min_error):
                     min_error = error
@@ -144,7 +149,7 @@ class ClusterLinkage(clustering._BaseClusterer):
                     
             # Stop if no update found or error reduction is small
             if (min_idx is None) or (error_rates[-1] - min_error < threshold):
-                print "no improvement. done."
+                if verbose: print "no improvement. done."
                 break
             
             # choose the min_idx
@@ -154,21 +159,26 @@ class ClusterLinkage(clustering._BaseClusterer):
             n_clusters.append(temp_n_clusters.copy())
             curr_classifier = best_classifier
 
-            print error_rates
-            print n_clusters
-            print "choosing %s"%self.labels[min_idx]
+            if verbose:
+                print error_rates
+                print n_clusters
+                print "choosing %s"%self.labels[min_idx]
 
             # replace the candidate if needed
             if (temp_n_clusters[min_idx]+1 <= self.maxclust):
-                partition,_ = _partition_subset((self.weighted_ink_data[min_idx], 
-                                                 self.labels[min_idx], 
-                                                 temp_n_clusters[min_idx]+1),
-                                                distmat=distmats[min_idx])
-                prototypes = _train_prototypes(self.weighted_ink_data[min_idx],
-                                               partition, 
-                                               self.labels[min_idx])
-                print "candidate for %s has length %d"%(self.labels[min_idx],
-                                                        len(prototypes))
+                partition,_ = _partition_subset(
+                    (self.weighted_ink_data[min_idx], 
+                     self.labels[min_idx], 
+                     temp_n_clusters[min_idx]+1),
+                    distmat=distmats[min_idx], 
+                    verbose=verbose)
+                prototypes = _train_prototypes(
+                    self.weighted_ink_data[min_idx],
+                    partition, 
+                    self.labels[min_idx])
+                if verbose:
+                    print "candidate for %s has length %d"%(
+                        self.labels[min_idx], len(prototypes))
                 candidates[min_idx] = prototypes
 
         self.n_clusters = n_clusters[-1]
@@ -193,8 +203,9 @@ class ClusterLinkage(clustering._BaseClusterer):
             label = self.labels[i]            
             data[label] = []
             for k in range(self.n_clusters[i]):
-                clustered_obs = [self.weighted_ink_data[i][j]
-                                 for j in range(len(self.weighted_ink_data[i])) 
-                                 if cluster_info[i][0][j] == (k+1)]
+                clustered_obs = [
+                    self.weighted_ink_data[i][j]
+                    for j in range(len(self.weighted_ink_data[i])) 
+                    if cluster_info[i][0][j] == (k+1)]
                 data[label].append(clustered_obs)
         return data

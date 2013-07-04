@@ -79,7 +79,8 @@ class PrototypeDTW(_Prototype):
         def _find_medoid(obs, obs_weights, distmat):
             n = len(obs)
             weighted_distmat = distmat * np.tile(obs_weights,(n,1)).T
-            sum_distmat = np.sum(weighted_distmat,axis=0) / np.sum(obs_weights)
+            sum_distmat = (np.sum(weighted_distmat,axis=0) / 
+                           np.sum(obs_weights))
             return (np.argmin(sum_distmat), np.amin(sum_distmat))
 
         def _find_centroid(obs, obs_weights, medoid):
@@ -89,7 +90,8 @@ class PrototypeDTW(_Prototype):
             feature_mat = np.nan_to_num(feature_mat)
             weighted_feature_mat = feature_mat * np.tile(
                 obs_weights, (feature_mat.shape[1],1)).T
-            mean_ink = np.sum(weighted_feature_mat,axis=0) / np.sum(obs_weights)
+            mean_ink = (np.sum(weighted_feature_mat,axis=0) / 
+                        np.sum(obs_weights))
             mean_ink = np.reshape(mean_ink, (-1,n_features), order='C')
             mean_ink = mean_ink + medoid
 
@@ -110,7 +112,8 @@ class PrototypeDTW(_Prototype):
             obs_weights = np.asarray(obs_weights)
 
         if not center_type in ['medoid', 'centroid']:
-            raise ValueError('center_type should be either medoid or centroid.')
+            raise ValueError(
+                'center_type should be either medoid or centroid.')
 
         # calculate distance matrix
         distMat = np.zeros((n,n))
