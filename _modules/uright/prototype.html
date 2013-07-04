@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uright.prototype &mdash; uright-python  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="uright-python  documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for uright.prototype</h1><div class="highlight"><pre>
+<span class="c"># Prototype (Character model)</span>
+<span class="c">#</span>
+<span class="c"># Author: Sunsern Cheamanunkul (sunsern@gmail.com)</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module implements different types of prototypes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.hmm</span> <span class="kn">import</span> <span class="n">normalize</span>
+
+<span class="kn">from</span> <span class="nn">dtw</span> <span class="kn">import</span> <span class="n">compute_dtw_distance</span><span class="p">,</span> <span class="n">compute_dtw_vector</span>
+<span class="kn">from</span> <span class="nn">weightedhmm</span> <span class="kn">import</span> <span class="n">WeightedGaussianHMM</span> 
+<span class="kn">from</span> <span class="nn">inkutils</span> <span class="kn">import</span> <span class="n">update_directions</span>
+
+<span class="k">class</span> <span class="nc">_Prototype</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Prototype base class.</span>
+<span class="sd">    </span>
+<span class="sd">    An abstract representation of a prototype.</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    num_obs : int</span>
+<span class="sd">       Number of training observations associated with</span>
+<span class="sd">       the prototype.</span>
+<span class="sd">    </span>
+<span class="sd">    label : string</span>
+<span class="sd">       Label of the prototype.</span>
+<span class="sd">    </span>
+<span class="sd">    model : object </span>
+<span class="sd">       The underlying model.</span>
+<span class="sd">  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">None</span>
+        
+    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">score</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;label&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">label</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;num_obs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_obs</span>
+        <span class="k">return</span> <span class="n">info</span>
+
+    <span class="k">def</span> <span class="nf">fromJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">json_dict</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">json_dict</span><span class="p">[</span><span class="s">&#39;label&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="n">json_dict</span><span class="p">[</span><span class="s">&#39;num_obs&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="PrototypeDTW"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeDTW">[docs]</a><span class="k">class</span> <span class="nc">PrototypeDTW</span><span class="p">(</span><span class="n">_Prototype</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;DTW-based prototype.</span>
+
+<span class="sd">    The prototype is simply a sequence of points along the trajactory.</span>
+<span class="sd">    The similarity between the prototype and an observation is measured </span>
+<span class="sd">    using the Dynamic Time Warping distance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    alpha : float</span>
+<span class="sd">       Weighting between location distance and direction distance.</span>
+<span class="sd">       If alpha=1.0, the direction distance is ignored. If alpha=0.0,</span>
+<span class="sd">       the location distance is ignored.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+        <span class="n">_Prototype</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+<div class="viewcode-block" id="PrototypeDTW.train"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeDTW.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">center_type</span><span class="o">=</span><span class="s">&#39;medoid&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Estimates the prototype from a set of observations.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">_find_medoid</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="p">,</span> <span class="n">distmat</span><span class="p">):</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+            <span class="n">weighted_distmat</span> <span class="o">=</span> <span class="n">distmat</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">,(</span><span class="n">n</span><span class="p">,</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">sum_distmat</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weighted_distmat</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> 
+                           <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">))</span>
+            <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">sum_distmat</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">amin</span><span class="p">(</span><span class="n">sum_distmat</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">_find_centroid</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="p">,</span> <span class="n">medoid</span><span class="p">):</span>
+            <span class="n">n_features</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="n">compute_dtw_vector</span><span class="p">(</span><span class="n">medoid</span><span class="p">,</span> <span class="n">ink</span><span class="p">)</span> <span class="k">for</span> <span class="n">ink</span> <span class="ow">in</span> <span class="n">obs</span><span class="p">]</span>
+            <span class="n">feature_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">feature_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">feature_mat</span><span class="p">)</span>
+            <span class="n">weighted_feature_mat</span> <span class="o">=</span> <span class="n">feature_mat</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span>
+                <span class="n">obs_weights</span><span class="p">,</span> <span class="p">(</span><span class="n">feature_mat</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">mean_ink</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weighted_feature_mat</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> 
+                        <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">))</span>
+            <span class="n">mean_ink</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">mean_ink</span><span class="p">,</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">n_features</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s">&#39;C&#39;</span><span class="p">)</span>
+            <span class="n">mean_ink</span> <span class="o">=</span> <span class="n">mean_ink</span> <span class="o">+</span> <span class="n">medoid</span>
+
+            <span class="n">weighted_dists</span> <span class="o">=</span> <span class="p">[</span><span class="n">obs_weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> 
+                              <span class="n">compute_dtw_distance</span><span class="p">(</span><span class="n">mean_ink</span><span class="p">,</span> <span class="n">obs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> 
+                                                   <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> 
+                              <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))]</span>
+            <span class="n">avg_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weighted_dists</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">(</span><span class="n">update_directions</span><span class="p">(</span><span class="n">mean_ink</span><span class="p">),</span> <span class="n">avg_dist</span><span class="p">)</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="n">n</span>
+
+        <span class="k">if</span> <span class="n">obs_weights</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">obs_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">center_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s">&#39;medoid&#39;</span><span class="p">,</span> <span class="s">&#39;centroid&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s">&#39;center_type should be either medoid or centroid.&#39;</span><span class="p">)</span>
+
+        <span class="c"># calculate distance matrix</span>
+        <span class="n">distMat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n</span><span class="p">,</span><span class="n">n</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">distMat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">compute_dtw_distance</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">obs</span><span class="p">[</span><span class="n">j</span><span class="p">],</span> 
+                                                    <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+                <span class="n">distMat</span><span class="p">[</span><span class="n">j</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">distMat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span>
+
+        <span class="p">(</span><span class="n">medoid_idx</span><span class="p">,</span> <span class="n">avg_min_dist</span><span class="p">)</span> <span class="o">=</span> <span class="n">_find_medoid</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="p">,</span> <span class="n">distMat</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">center_type</span> <span class="o">==</span> <span class="s">&#39;centroid&#39;</span><span class="p">:</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">avg_min_dist</span><span class="p">)</span> <span class="o">=</span> <span class="n">_find_centroid</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="p">,</span> 
+                                                        <span class="n">obs</span><span class="p">[</span><span class="n">medoid_idx</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[</span><span class="n">medoid_idx</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="o">-</span><span class="n">avg_min_dist</span>
+</div>
+<div class="viewcode-block" id="PrototypeDTW.score"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeDTW.score">[docs]</a>    <span class="k">def</span> <span class="nf">score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculates the score of an observation.</span>
+<span class="sd">        </span>
+<span class="sd">        The score is defined as negative of the DTW distance.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (score, None)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">compute_dtw_distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="n">dist</span><span class="p">,</span> <span class="bp">None</span>
+</div>
+<div class="viewcode-block" id="PrototypeDTW.toJSON"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeDTW.toJSON">[docs]</a>    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a JSON dictionary representing the prototype.&quot;&quot;&quot;</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">PrototypeDTW</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toJSON</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;alpha&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;center&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">info</span>
+</div>
+<div class="viewcode-block" id="PrototypeDTW.fromJSON"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeDTW.fromJSON">[docs]</a>    <span class="k">def</span> <span class="nf">fromJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">jsonObj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initializes the prototype with a JSON dictionary.&quot;&quot;&quot;</span> 
+        <span class="nb">super</span><span class="p">(</span><span class="n">PrototypeDTW</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">fromJSON</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;alpha&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;center&#39;</span><span class="p">])</span>
+
+</div></div>
+<div class="viewcode-block" id="PrototypeHMM"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeHMM">[docs]</a><span class="k">class</span> <span class="nc">PrototypeHMM</span><span class="p">(</span><span class="n">_Prototype</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;HMM-based prototype.</span>
+
+<span class="sd">    This class uses HMM as the underlying model. The similarity is defined</span>
+<span class="sd">    in term of the log likelihood.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    num_states : float</span>
+<span class="sd">       Number of hidden states. If num_states &lt; 1, the number of states is </span>
+<span class="sd">       set proportionally to the average length of the observations. </span>
+<span class="sd">       For example, if num_states = 0.5, the number of states will </span>
+<span class="sd">       be set to 0.5 * average length of the observations.</span>
+
+<span class="sd">    self_transprob : float</span>
+<span class="sd">       Probability of staying in the same state.</span>
+
+<span class="sd">    next_transprob : float</span>
+<span class="sd">       Probability of moving to the adjacent state.</span>
+
+<span class="sd">    skip_transprob : float</span>
+<span class="sd">       Probability of moving to any other non-adjacent states.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    N : int</span>
+<span class="sd">       Number of hidden states in the model.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">num_states</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">self_transprob</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> 
+                 <span class="n">next_transprob</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">skip_transprob</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">):</span>
+        <span class="n">_Prototype</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span> <span class="o">=</span> <span class="n">num_states</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">self_transprob</span> <span class="o">=</span> <span class="n">self_transprob</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next_transprob</span> <span class="o">=</span> <span class="n">next_transprob</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">skip_transprob</span> <span class="o">=</span> <span class="n">skip_transprob</span>
+        
+<div class="viewcode-block" id="PrototypeHMM.train"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeHMM.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">max_N</span><span class="o">=</span><span class="mi">15</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Estimates the prototype from a set of observations.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        max_N : int</span>
+<span class="sd">           The maximum lenght of the HMM.</span>
+<span class="sd">      </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">obs_weights</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">obs_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">obs_weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs_weights</span><span class="p">)</span>
+
+        <span class="c"># set the number of states</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_states</span> <span class="o">&gt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mean_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">each_obs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">each_obs</span> <span class="ow">in</span> <span class="n">obs</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_states</span> <span class="o">*</span> <span class="n">mean_length</span><span class="p">),</span> <span class="n">max_N</span><span class="p">)</span>
+
+        <span class="c"># transition prob: left-to-right</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">self_transprob</span>
+            <span class="k">if</span> <span class="n">i</span><span class="o">+</span><span class="mi">1</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_transprob</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_transprob</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transmat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c"># state prior prob: left-most only</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startprob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">startprob</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">WeightedGaussianHMM</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="s">&#39;diag&#39;</span><span class="p">,</span> 
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">startprob</span><span class="p">,</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">transmat</span><span class="p">,</span>
+                                         <span class="n">algorithm</span><span class="o">=</span><span class="s">&#39;map&#39;</span><span class="p">,</span>
+                                         <span class="n">params</span><span class="o">=</span><span class="s">&#39;mc&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">obs_weights</span><span class="o">=</span><span class="n">obs_weights</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="PrototypeHMM.score"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeHMM.score">[docs]</a>    <span class="k">def</span> <span class="nf">score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculates the score of an observation.</span>
+<span class="sd">        </span>
+<span class="sd">        The score is defined as the log likelihood of the observation</span>
+<span class="sd">        under the model.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (loglikelihood, fwdlattice)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        <span class="n">framelogprob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_compute_log_likelihood</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        <span class="n">logprob</span><span class="p">,</span> <span class="n">fwdlattice</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_do_forward_pass</span><span class="p">(</span><span class="n">framelogprob</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">logprob</span><span class="p">,</span> <span class="n">fwdlattice</span>
+</div>
+<div class="viewcode-block" id="PrototypeHMM.toJSON"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeHMM.toJSON">[docs]</a>    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a JSON dictionary representing the prototype.&quot;&quot;&quot;</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">PrototypeHMM</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toJSON</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;n_components&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">n_components</span><span class="p">)</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;n_features&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">n_features</span><span class="p">)</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;transmat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">transmat_</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;startprob&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">startprob_</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;means&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_means_</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;covars&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_covars_</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;N&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">N</span>
+        <span class="k">return</span> <span class="n">info</span>
+</div>
+<div class="viewcode-block" id="PrototypeHMM.fromJSON"><a class="viewcode-back" href="../../uright.html#uright.prototype.PrototypeHMM.fromJSON">[docs]</a>    <span class="k">def</span> <span class="nf">fromJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">jsonObj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initializes the prototype with a JSON dictionary.&quot;&quot;&quot;</span> 
+        <span class="nb">super</span><span class="p">(</span><span class="n">PrototypeHMM</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">fromJSON</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">N</span> <span class="o">=</span> <span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;N&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">WeightedGaussianHMM</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">N</span><span class="p">,</span> <span class="s">&#39;diag&#39;</span><span class="p">,</span>
+                                         <span class="n">algorithm</span><span class="o">=</span><span class="s">&#39;map&#39;</span><span class="p">,</span>
+                                         <span class="n">params</span><span class="o">=</span><span class="s">&#39;mc&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">n_features</span> <span class="o">=</span> <span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;n_features&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">transmat_</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;transmat&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">startprob_</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;startprob&#39;</span><span class="p">],</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_means_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;means&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_covars_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">jsonObj</span><span class="p">[</span><span class="s">&#39;covars&#39;</span><span class="p">])</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Sunsern Cheamanunkul.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uright.inkutils &mdash; uright-python  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="uright-python  documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for uright.inkutils</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numpy.random</span> <span class="kn">as</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">json</span>
+
+<span class="c"># each point structure</span>
+<span class="n">INK_STRUCT</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;X_IDX&#39;</span> <span class="p">:</span><span class="mi">0</span><span class="p">,</span> 
+              <span class="s">&#39;Y_IDX&#39;</span> <span class="p">:</span><span class="mi">1</span><span class="p">,</span> 
+              <span class="s">&#39;DX_IDX&#39;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> 
+              <span class="s">&#39;DY_IDX&#39;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> 
+              <span class="s">&#39;PU_IDX&#39;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+              <span class="s">&#39;T_IDX&#39;</span> <span class="p">:</span><span class="mi">5</span><span class="p">}</span>
+
+<span class="n">_X_IDX</span>  <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;X_IDX&#39;</span><span class="p">]</span>
+<span class="n">_Y_IDX</span>  <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;Y_IDX&#39;</span><span class="p">]</span>
+<span class="n">_DX_IDX</span> <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;DX_IDX&#39;</span><span class="p">]</span>
+<span class="n">_DY_IDX</span> <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;DY_IDX&#39;</span><span class="p">]</span>
+<span class="n">_PU_IDX</span> <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;PU_IDX&#39;</span><span class="p">]</span>
+<span class="n">_T_IDX</span>  <span class="o">=</span> <span class="n">INK_STRUCT</span><span class="p">[</span><span class="s">&#39;T_IDX&#39;</span><span class="p">]</span>
+
+<span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-10</span>
+
+<div class="viewcode-block" id="json2array"><a class="viewcode-back" href="../../uright.html#uright.inkutils.json2array">[docs]</a><span class="k">def</span> <span class="nf">json2array</span><span class="p">(</span><span class="n">ink</span><span class="p">,</span><span class="n">timestamp</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert a json ink into a numpy array.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    timestamp : bool</span>
+<span class="sd">       If true, the output array also includes timestamps.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (N x D) array where N is the number of points. Each row is</span>
+<span class="sd">    [x,y,dx,dy,pen-up, {t}]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">all_points</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">if</span> <span class="n">timestamp</span><span class="p">:</span>
+        <span class="n">penup</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">penup</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">penup</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="n">penup</span><span class="p">[</span><span class="n">_PU_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">for</span> <span class="n">stroke</span> <span class="ow">in</span> <span class="n">ink</span><span class="p">[</span><span class="s">&#39;strokes&#39;</span><span class="p">]:</span>
+        <span class="n">previous_point</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">stroke</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">timestamp</span><span class="p">:</span>
+                <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>                
+                <span class="n">vec</span><span class="p">[</span><span class="n">_T_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">point</span><span class="p">[</span><span class="s">&#39;t&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">])</span>
+            <span class="n">vec</span><span class="p">[</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="s">&#39;y&#39;</span><span class="p">])</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="k">if</span> <span class="n">previous_point</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="p">(</span><span class="n">px</span><span class="p">,</span><span class="n">py</span><span class="p">)</span> <span class="o">=</span> <span class="n">previous_point</span>
+                <span class="n">dx</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">px</span> 
+                <span class="n">dy</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">py</span>
+                <span class="c"># normalize by the norm</span>
+                <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="o">*</span><span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span><span class="o">*</span><span class="n">dy</span><span class="p">)</span>
+                <span class="n">dx</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">)</span>
+                <span class="n">dy</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="n">_DX_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">dx</span>
+            <span class="n">vec</span><span class="p">[</span><span class="n">_DY_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">dy</span>
+            <span class="n">vec</span><span class="p">[</span><span class="n">_PU_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">previous_point</span> <span class="o">=</span> <span class="p">(</span><span class="n">vec</span><span class="p">[</span><span class="n">_X_IDX</span><span class="p">],</span><span class="n">vec</span><span class="p">[</span><span class="n">_Y_IDX</span><span class="p">])</span>
+            <span class="n">all_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span>
+        <span class="n">all_points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">penup</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">all_points</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="center_ink"><a class="viewcode-back" href="../../uright.html#uright.inkutils.center_ink">[docs]</a><span class="k">def</span> <span class="nf">center_ink</span><span class="p">(</span><span class="n">ink</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Center the ink at x=0&quot;&quot;&quot;</span>
+    <span class="n">ink_array</span> <span class="o">=</span> <span class="n">ink</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span>
+    <span class="n">mean_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
+    <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">mean_x</span>
+    <span class="k">return</span> <span class="n">ink_array</span>
+ </div>
+<div class="viewcode-block" id="scale_ink"><a class="viewcode-back" href="../../uright.html#uright.inkutils.scale_ink">[docs]</a><span class="k">def</span> <span class="nf">scale_ink</span><span class="p">(</span><span class="n">ink</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Scale ink height to [-1..1]&quot;&quot;&quot;</span>
+    <span class="n">ink_array</span> <span class="o">=</span> <span class="n">ink</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_Y_IDX</span><span class="p">]</span>
+    <span class="n">min_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">max_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="n">max_y</span> <span class="o">-</span> <span class="n">min_y</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">)</span>
+    <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span> <span class="o">+</span> <span class="p">((</span><span class="n">ink_array</span><span class="p">[:,</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">min_y</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ink_array</span>
+</div>
+<div class="viewcode-block" id="update_directions"><a class="viewcode-back" href="../../uright.html#uright.inkutils.update_directions">[docs]</a><span class="k">def</span> <span class="nf">update_directions</span><span class="p">(</span><span class="n">ink</span><span class="p">):</span>
+    <span class="n">ink_array</span> <span class="o">=</span> <span class="n">ink</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">ink_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">_PU_IDX</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">_X_IDX</span><span class="p">]</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">-</span> <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="n">_Y_IDX</span><span class="p">]</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dx</span><span class="o">*</span><span class="n">dx</span> <span class="o">+</span> <span class="n">dy</span><span class="o">*</span><span class="n">dy</span><span class="p">)</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">)</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">_EPS</span><span class="p">)</span>
+            <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">_DX_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">dx</span>
+            <span class="n">ink_array</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">_DY_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="n">dy</span>
+    <span class="k">return</span> <span class="n">ink_array</span>
+    </div>
+<div class="viewcode-block" id="add_noise"><a class="viewcode-back" href="../../uright.html#uright.inkutils.add_noise">[docs]</a><span class="k">def</span> <span class="nf">add_noise</span><span class="p">(</span><span class="n">ink</span><span class="p">):</span>
+    <span class="n">ink_array</span> <span class="o">=</span> <span class="n">ink</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">ink_array</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">scaleX</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span><span class="mf">1.2</span><span class="p">)</span>
+    <span class="n">scaleY</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span><span class="mf">1.2</span><span class="p">)</span>
+    <span class="n">translateX</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">translateY</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">scale</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ink_array</span><span class="p">[:,</span><span class="n">_X_IDX</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaleX</span><span class="p">)</span> <span class="o">+</span> <span class="n">translateX</span>
+    <span class="n">ink_array</span><span class="p">[:,</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ink_array</span><span class="p">[:,</span><span class="n">_Y_IDX</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaleY</span><span class="p">)</span> <span class="o">+</span> <span class="n">translateY</span>
+    <span class="k">return</span> <span class="n">update_directions</span><span class="p">(</span><span class="n">ink_array</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="normalize_ink"><a class="viewcode-back" href="../../uright.html#uright.inkutils.normalize_ink">[docs]</a><span class="k">def</span> <span class="nf">normalize_ink</span><span class="p">(</span><span class="n">ink</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Normalize using bounding box&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">scale_ink</span><span class="p">(</span><span class="n">center_ink</span><span class="p">(</span><span class="n">ink</span><span class="p">))</span>
+</div>
+<div class="viewcode-block" id="filter_bad_ink"><a class="viewcode-back" href="../../uright.html#uright.inkutils.filter_bad_ink">[docs]</a><span class="k">def</span> <span class="nf">filter_bad_ink</span><span class="p">(</span><span class="n">ink_list</span><span class="p">,</span> <span class="n">min_length</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Filter out bad ink&quot;&quot;&quot;</span>
+    <span class="n">all_ink</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">json2array</span><span class="p">,</span> <span class="n">ink_list</span><span class="p">)</span>
+    <span class="n">filtered</span> <span class="o">=</span> <span class="p">[</span><span class="n">ink_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">all_ink</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">min_length</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">filtered</span>
+</div>
+<div class="viewcode-block" id="user_normalized_ink"><a class="viewcode-back" href="../../uright.html#uright.inkutils.user_normalized_ink">[docs]</a><span class="k">def</span> <span class="nf">user_normalized_ink</span><span class="p">(</span><span class="n">user_raw_ink</span><span class="p">):</span>
+    <span class="n">normalized_ink</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">userid</span><span class="p">,</span> <span class="n">raw_ink</span> <span class="ow">in</span> <span class="n">user_raw_ink</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">ink_list</span> <span class="ow">in</span> <span class="n">raw_ink</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">temp</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">normalize_ink</span><span class="p">(</span><span class="n">json2array</span><span class="p">(</span><span class="n">ink</span><span class="p">)))</span> 
+                           <span class="k">for</span> <span class="n">ink</span> <span class="ow">in</span> <span class="n">filter_bad_ink</span><span class="p">(</span><span class="n">ink_list</span><span class="p">)]</span>
+        <span class="n">normalized_ink</span><span class="p">[</span><span class="n">userid</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp</span>
+    <span class="k">return</span> <span class="n">normalized_ink</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Sunsern Cheamanunkul.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
+    </div>
+  </body>
+</html>

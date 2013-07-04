@@ -1,0 +1,442 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>uright.classifier &mdash; uright-python  documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="uright-python  documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for uright.classifier</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">_state_reduction</span> <span class="kn">import</span> <span class="n">_state_reduction</span>
+<span class="kn">from</span> <span class="nn">_beam_dtw</span> <span class="kn">import</span> <span class="n">BeamSearchDTW</span>
+<span class="kn">from</span> <span class="nn">prototype</span> <span class="kn">import</span> <span class="n">PrototypeHMM</span><span class="p">,</span><span class="n">PrototypeDTW</span>
+
+<span class="k">def</span> <span class="nf">_max_score</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">prot_list</span><span class="p">,</span> <span class="n">log_priors</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the label of the prototype in `prot_list`</span>
+<span class="sd">    that has the maximum score (or log likelihood).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">all_scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prot_list</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prot_list</span><span class="p">)):</span>
+        <span class="n">prot_obj</span> <span class="o">=</span> <span class="n">prot_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">logprob</span><span class="p">,</span><span class="n">_</span> <span class="o">=</span> <span class="n">prot_obj</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        <span class="n">all_scores</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">log_priors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">logprob</span>
+    <span class="k">return</span> <span class="n">prot_list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">all_scores</span><span class="p">)]</span><span class="o">.</span><span class="n">label</span>
+
+<span class="k">class</span> <span class="nc">_Classifier</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Maximum likelihood classifier.</span>
+<span class="sd">        </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    trained_prototypes : list</span>
+<span class="sd">       List of trained prototype instances</span>
+
+<span class="sd">    log_priors : numpy.ndarray</span>
+<span class="sd">       Log prior probability of each prototype (offsets)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">_compute_log_priors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_get_trained_prototypes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span>
+
+    <span class="k">def</span> <span class="nf">_set_trained_prototypes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prototypes</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">prototypes</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_log_priors</span><span class="p">()</span>
+
+    <span class="n">trained_prototypes</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_get_trained_prototypes</span><span class="p">,</span> 
+                                  <span class="n">_set_trained_prototypes</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+        
+    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label_ink_data</span><span class="p">,</span> <span class="n">dview</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculates the percent classification accuracy.</span>
+<span class="sd">    </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        label_ink_data : list</span>
+<span class="sd">           List of label-ink pairs.</span>
+
+<span class="sd">        dview : IPython.Directview</span>
+<span class="sd">           For parallel processing.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (accuracy, true_label, predicted)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;trained_prototypes is empty.&#39;</span>
+                             <span class="s">&#39;You must train classifer before calling test&#39;</span><span class="p">)</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">label_ink_data</span><span class="p">)</span>
+        <span class="n">true_labels</span><span class="p">,</span> <span class="n">all_ink</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">label_ink_data</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dview</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">predicted</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">_max_score</span><span class="p">,</span>
+                            <span class="n">all_ink</span><span class="p">,</span>
+                            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span>
+                            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c"># IPython parallel map</span>
+            <span class="n">predicted</span> <span class="o">=</span> <span class="n">dview</span><span class="o">.</span><span class="n">map_sync</span><span class="p">(</span><span class="n">_max_score</span><span class="p">,</span>
+                                       <span class="n">all_ink</span><span class="p">,</span>
+                                       <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span>
+                                       <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+
+        <span class="n">true_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">true_labels</span><span class="p">)</span>
+        <span class="n">predicted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">predicted</span><span class="p">)</span>
+        <span class="n">accuracy</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">true_labels</span> <span class="o">==</span> <span class="n">predicted</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">accuracy</span><span class="p">,</span> <span class="n">true_labels</span><span class="p">,</span> <span class="n">predicted</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">classify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Classify observation using the model.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_max_score</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> 
+                              <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">,</span> 
+                              <span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">)):</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">proto_info</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">toJSON</span><span class="p">()</span>
+            <span class="n">proto_info</span><span class="p">[</span><span class="s">&#39;prior&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">float16</span><span class="p">)</span>
+            <span class="n">prototypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">proto_info</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s">&#39;prototypes&#39;</span><span class="p">:</span><span class="n">prototypes</span><span class="p">}</span>
+    
+    <span class="k">def</span> <span class="nf">fromJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">json_obj</span><span class="p">):</span>
+        <span class="k">pass</span>
+        
+
+<div class="viewcode-block" id="ClassifierDTW"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierDTW">[docs]</a><span class="k">class</span> <span class="nc">ClassifierDTW</span><span class="p">(</span><span class="n">_Classifier</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Classifier with DTW prototypes</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_cluster_size : int</span>
+<span class="sd">      Minimum number of examples in a cluster.</span>
+
+<span class="sd">    alpha : float</span>
+<span class="sd">      Defult alpha for DTW algorithm      </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_cluster_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+        <span class="n">_Classifier</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span> <span class="o">=</span> <span class="n">min_cluster_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+
+    <span class="k">def</span> <span class="nf">_compute_log_priors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ClassifierDTW.train"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierDTW.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clustered_ink_data</span><span class="p">,</span> <span class="n">center_type</span><span class="o">=</span><span class="s">&#39;medoid&#39;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Trains the classifier.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        clustered_ink_data : dictionary</span>
+<span class="sd">           Training data with the following structure.</span>
+<span class="sd">           clustered_ink_data[label][cluster_id] = [ink1, ink2, ... inkN]</span>
+
+<span class="sd">        center_type : {&#39;medoid&#39;, &#39;centroid&#39;}</span>
+<span class="sd">           Type of the DTW center.</span>
+<span class="sd">       </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">alldist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">clustered_ink_data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ink_list</span> <span class="ow">in</span> <span class="n">clustered_ink_data</span><span class="p">[</span><span class="n">label</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span><span class="p">:</span>
+                    <span class="n">ink_data</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">ink_list</span><span class="p">)</span>
+                    <span class="n">proto</span> <span class="o">=</span> <span class="n">PrototypeDTW</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+                    <span class="n">avgdist</span> <span class="o">=</span> <span class="n">proto</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">ink_data</span><span class="p">,</span> 
+                                          <span class="n">obs_weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+                                          <span class="n">center_type</span><span class="o">=</span><span class="n">center_type</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">proto</span><span class="p">)</span>
+                    <span class="n">alldist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">avgdist</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="k">print</span> <span class="p">(</span><span class="s">&quot;Prototype for &quot;</span>
+                               <span class="s">&quot;</span><span class="si">%s</span><span class="s"> (</span><span class="si">%d</span><span class="s"> instances, avg.dist = </span><span class="si">%0.2f</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span>
+                                <span class="n">label</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">),</span> <span class="n">avgdist</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_log_priors</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ClassifierDTW.state_reduction"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierDTW.state_reduction">[docs]</a>    <span class="k">def</span> <span class="nf">state_reduction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_ink</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs state reduction on the trained prototypes.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        test_ink : list</span>
+<span class="sd">           List of observations.</span>
+
+<span class="sd">        n_iter : int</span>
+<span class="sd">           Number of iterations to perfrom reduction.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">test_ink_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">ink</span> <span class="ow">in</span> <span class="n">test_ink</span><span class="p">:</span>
+            <span class="n">test_ink_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">label</span><span class="p">,[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ink</span><span class="p">)</span>
+
+        <span class="n">prototype_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">num_obs_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">prot_obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">:</span>
+            <span class="n">prototype_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                                      <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">num_obs_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                                    <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">num_obs</span><span class="p">)</span>
+
+        <span class="c"># run the state reduction algorithm</span>
+        <span class="n">reduced_prototypes</span> <span class="o">=</span> <span class="n">_state_reduction</span><span class="p">(</span><span class="n">prototype_dict</span><span class="p">,</span> 
+                                              <span class="n">test_ink_dict</span><span class="p">,</span>
+                                              <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+        
+        <span class="c"># unpack the reduced prototypes</span>
+        <span class="n">trained_prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">reduced_prototypes</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reduced_prototypes</span><span class="p">[</span><span class="n">label</span><span class="p">]):</span>
+                <span class="n">prot_obj</span> <span class="o">=</span> <span class="n">PrototypeDTW</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+                <span class="n">prot_obj</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">p</span>
+                <span class="n">prot_obj</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="n">num_obs_dict</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">trained_prototypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="p">)</span>
+
+        <span class="n">new_c</span> <span class="o">=</span> <span class="n">ClassifierDTW</span><span class="p">(</span><span class="n">min_cluster_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span><span class="p">,</span>
+                              <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="n">new_c</span><span class="o">.</span><span class="n">trained_prototypes</span> <span class="o">=</span> <span class="n">trained_prototypes</span>
+        <span class="k">return</span> <span class="n">new_c</span>
+</div>
+<div class="viewcode-block" id="ClassifierDTW.toJSON"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierDTW.toJSON">[docs]</a>    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">ClassifierHMM</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toJSON</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;prototype_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;DTW&#39;</span>
+        <span class="k">return</span> <span class="n">info</span>
+
+</div></div>
+<div class="viewcode-block" id="ClassifierBeamDTW"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierBeamDTW">[docs]</a><span class="k">class</span> <span class="nc">ClassifierBeamDTW</span><span class="p">(</span><span class="n">ClassifierDTW</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Beam-search DTW classifier</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_cluster_size : int</span>
+<span class="sd">      Minimum number of examples in a cluster.</span>
+
+<span class="sd">    alpha : float</span>
+<span class="sd">      Alpha for DTW algorithm (used in training)</span>
+<span class="sd">        </span>
+<span class="sd">    beam_width : int, None</span>
+<span class="sd">      Number of states kept in memeory at each time step.</span>
+
+<span class="sd">    beam_alpha : float</span>
+<span class="sd">      Alpha for the beam decoding (used in classify) </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_cluster_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> 
+                 <span class="n">beam_width</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">beam_alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+        <span class="n">ClassifierDTW</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                               <span class="n">min_cluster_size</span><span class="o">=</span><span class="n">min_cluster_size</span><span class="p">,</span> 
+                               <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beam</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beam_width</span> <span class="o">=</span> <span class="n">beam_width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beam_alpha</span> <span class="o">=</span> <span class="n">beam_alpha</span>
+
+<div class="viewcode-block" id="ClassifierBeamDTW.train"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierBeamDTW.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clustered_ink_data</span><span class="p">,</span> <span class="n">center_type</span><span class="o">=</span><span class="s">&#39;medoid&#39;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ClassifierBeamDTW</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">clustered_ink_data</span><span class="p">,</span> 
+                                             <span class="n">center_type</span><span class="o">=</span><span class="n">center_type</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beam</span> <span class="o">=</span> <span class="n">BeamSearchDTW</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trained_prototypes</span><span class="p">,</span>
+                                  <span class="n">max_states</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beam_width</span><span class="p">,</span>
+                                  <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beam_alpha</span><span class="p">)</span>
+    </div>
+<div class="viewcode-block" id="ClassifierBeamDTW.test"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierBeamDTW.test">[docs]</a>    <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">label_ink_data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;No prototypes in the classifier.&#39;</span><span class="p">)</span>
+
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">label_ink_data</span><span class="p">)</span>
+        <span class="n">true_labels</span><span class="p">,</span> <span class="n">all_ink</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">label_ink_data</span><span class="p">)</span>
+        <span class="n">true_labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">true_labels</span><span class="p">)</span>
+        <span class="n">predicted</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classify</span><span class="p">,</span> <span class="n">all_ink</span><span class="p">)</span>
+        <span class="n">predicted</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">predicted</span><span class="p">)</span>
+        <span class="n">accuracy</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">true_labels</span> <span class="o">==</span> <span class="n">predicted</span><span class="p">)</span> <span class="o">/</span> <span class="n">n</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">accuracy</span><span class="p">,</span> <span class="n">true_labels</span><span class="p">,</span> <span class="n">predicted</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="ClassifierBeamDTW.classify"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierBeamDTW.classify">[docs]</a>    <span class="k">def</span> <span class="nf">classify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beam</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">beam</span><span class="o">.</span><span class="n">add_point</span><span class="p">(</span><span class="n">obs</span><span class="p">[</span><span class="n">i</span><span class="p">,:])</span>
+        <span class="n">ll</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">beam</span><span class="o">.</span><span class="n">score</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">ll</span><span class="p">)]</span><span class="o">.</span><span class="n">label</span>
+
+</div>
+<div class="viewcode-block" id="ClassifierBeamDTW.state_reduction"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierBeamDTW.state_reduction">[docs]</a>    <span class="k">def</span> <span class="nf">state_reduction</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_ink</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a new instance of ClassifierDTW</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">test_ink_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">ink</span> <span class="ow">in</span> <span class="n">test_ink</span><span class="p">:</span>
+            <span class="n">test_ink_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">label</span><span class="p">,[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ink</span><span class="p">)</span>
+
+        <span class="n">prototype_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">num_obs_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">prot_obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">:</span>
+            <span class="n">prototype_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                                      <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="n">num_obs_dict</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">label</span><span class="p">,</span>
+                                    <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="o">.</span><span class="n">num_obs</span><span class="p">)</span>
+
+        <span class="c"># run the state reduction algorithm</span>
+        <span class="n">reduced_prototypes</span> <span class="o">=</span> <span class="n">_state_reduction</span><span class="p">(</span><span class="n">prototype_dict</span><span class="p">,</span> 
+                                              <span class="n">test_ink_dict</span><span class="p">,</span>
+                                              <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+        
+        <span class="c"># unpack the reduced prototypes</span>
+        <span class="n">trained_prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">reduced_prototypes</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reduced_prototypes</span><span class="p">[</span><span class="n">label</span><span class="p">]):</span>
+                <span class="n">prot_obj</span> <span class="o">=</span> <span class="n">PrototypeDTW</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+                <span class="n">prot_obj</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">p</span>
+                <span class="n">prot_obj</span><span class="o">.</span><span class="n">num_obs</span> <span class="o">=</span> <span class="n">num_obs_dict</span><span class="p">[</span><span class="n">label</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">trained_prototypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">prot_obj</span><span class="p">)</span>
+
+        <span class="n">new_c</span> <span class="o">=</span> <span class="n">ClassifierBeamDTW</span><span class="p">(</span><span class="n">min_cluster_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span><span class="p">,</span>
+                                  <span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+                                  <span class="n">beam_width</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beam_width</span><span class="p">,</span>
+                                  <span class="n">beam_alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">beam_alpha</span><span class="p">)</span>
+        <span class="n">new_c</span><span class="o">.</span><span class="n">trained_prototypes</span> <span class="o">=</span> <span class="n">trained_prototypes</span>
+        <span class="n">new_c</span><span class="o">.</span><span class="n">beam</span> <span class="o">=</span> <span class="n">BeamSearchDTW</span><span class="p">(</span><span class="n">new_c</span><span class="o">.</span><span class="n">trained_prototypes</span><span class="p">,</span>
+                                   <span class="n">max_states</span><span class="o">=</span><span class="n">new_c</span><span class="o">.</span><span class="n">beam_width</span><span class="p">,</span>
+                                   <span class="n">alpha</span><span class="o">=</span><span class="n">new_c</span><span class="o">.</span><span class="n">beam_alpha</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_c</span>
+
+
+    </div></div>
+<div class="viewcode-block" id="ClassifierHMM"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierHMM">[docs]</a><span class="k">class</span> <span class="nc">ClassifierHMM</span><span class="p">(</span><span class="n">_Classifier</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Classifier with HMM-based prototypes</span>
+<span class="sd">    </span>
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    min_cluster_size : int</span>
+<span class="sd">       Minimum number of examples in a cluster</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_cluster_size</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">_Classifier</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span> <span class="o">=</span> <span class="n">min_cluster_size</span>
+
+    <span class="k">def</span> <span class="nf">_compute_log_priors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">num_examples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">proto</span><span class="o">.</span><span class="n">num_obs</span><span class="p">)</span> 
+                                 <span class="k">for</span> <span class="n">proto</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_priors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">num_examples</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">num_examples</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ClassifierHMM.train"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierHMM.train">[docs]</a>    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clustered_ink_data</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Train the classifier from clustered_data</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        clustered_ink_data : dictionary</span>
+<span class="sd">          clustered_ink_data[label] = [ [(ink,weight) from each cluster] ]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">clustered_ink_data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ink_list</span> <span class="ow">in</span> <span class="n">clustered_ink_data</span><span class="p">[</span><span class="n">label</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_cluster_size</span><span class="p">:</span>
+                    <span class="n">ink_data</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">ink_list</span><span class="p">)</span>
+                    <span class="n">proto</span> <span class="o">=</span> <span class="n">PrototypeHMM</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+                    <span class="n">loglike</span> <span class="o">=</span> <span class="n">proto</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">ink_data</span><span class="p">,</span> <span class="n">obs_weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_trained_prototypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">proto</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="k">print</span> <span class="p">(</span><span class="s">&quot;Prototype for &quot;</span>
+                               <span class="s">&quot;</span><span class="si">%s</span><span class="s"> (</span><span class="si">%d</span><span class="s"> instances, avg_ll = </span><span class="si">%0.1f</span><span class="s">)&quot;</span><span class="o">%</span><span class="p">(</span>
+                                <span class="n">label</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">),</span> <span class="n">loglike</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">ink_list</span><span class="p">)))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_log_priors</span><span class="p">()</span>
+        </div>
+<div class="viewcode-block" id="ClassifierHMM.toJSON"><a class="viewcode-back" href="../../uright.html#uright.classifier.ClassifierHMM.toJSON">[docs]</a>    <span class="k">def</span> <span class="nf">toJSON</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">ClassifierHMM</span><span class="p">,</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toJSON</span><span class="p">()</span>
+        <span class="n">info</span><span class="p">[</span><span class="s">&#39;prototype_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;HMM&#39;</span>
+        <span class="k">return</span> <span class="n">info</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../index.html">uright-python  documentation</a> &raquo;</li>
+          <li><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Sunsern Cheamanunkul.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b1.
+    </div>
+  </body>
+</html>

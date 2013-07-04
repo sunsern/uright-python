@@ -1,0 +1,43 @@
+tests Package
+=============
+
+:mod:`test_classifier` Module
+-----------------------------
+
+.. automodule:: uright.tests.test_classifier
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`test_dtw` Module
+----------------------
+
+.. automodule:: uright.tests.test_dtw
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`test_kmeans` Module
+-------------------------
+
+.. automodule:: uright.tests.test_kmeans
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`test_linkage` Module
+--------------------------
+
+.. automodule:: uright.tests.test_linkage
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`test_prototype` Module
+----------------------------
+
+.. automodule:: uright.tests.test_prototype
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
