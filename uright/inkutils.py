@@ -125,12 +125,14 @@ def filter_bad_ink(ink_list, min_length=3):
                 if all_ink[i].shape[0] > min_length]
     return filtered
 
-def user_normalized_ink(user_raw_ink):
+def user_normalized_ink(user_raw_ink, timestamp=False):
     normalized_ink = {}
     for userid, raw_ink in user_raw_ink.iteritems():
         temp = {}
         for label, ink_list in raw_ink.iteritems():
-            temp[label] = [np.nan_to_num(normalize_ink(json2array(ink))) 
-                           for ink in filter_bad_ink(ink_list)]
+            temp[label] = [
+                np.nan_to_num(normalize_ink(
+                        json2array(ink, timestamp=timestamp))) 
+                for ink in filter_bad_ink(ink_list)]
         normalized_ink[userid] = temp
     return normalized_ink
