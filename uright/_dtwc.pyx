@@ -13,7 +13,7 @@ cdef int _PU_IDX = inkutils.INK_STRUCT['PU_IDX']
 
 ctypedef np.float64_t dtype_t
 
-cdef dtype_t _MIN_STDEV = 1e-3
+cdef dtype_t _MIN_STDEV = 1e-5
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -75,11 +75,9 @@ def _compute_combined_distance(np.ndarray[dtype_t, ndim=2] ink_array1 not None,
     stdev_xy = np.std(d_xy[or_penup < 1])
     stdev_dir = np.std(d_dir[or_penup < 1])
 
-    if stdev_xy < _MIN_STDEV: 
-        stdev_xy = _MIN_STDEV
+    if stdev_xy < _MIN_STDEV: stdev_xy = _MIN_STDEV
 
-    if stdev_dir < _MIN_STDEV: 
-        stdev_dir = _MIN_STDEV
+    if stdev_dir < _MIN_STDEV: stdev_dir = _MIN_STDEV
 
     penup_penalty = max(penup_z * (stdev_xy * alpha + 
                                    stdev_dir * (1 - alpha)), 1.0)
