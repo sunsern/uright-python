@@ -108,12 +108,16 @@ class ClusterKMeans(clustering._BaseClusterer):
     """Cluster data with K-means algorithm"""
     def __init__(self, user_ink_data, target_user_id=None, 
                  min_cluster_size=10, maxclust=4, 
-                 random_state=None, algorithm='hmm'):
-        clustering._BaseClusterer.__init__(self, 
-                                           user_ink_data, 
-                                           target_user_id=target_user_id, 
-                                           min_cluster_size=min_cluster_size, 
-                                           maxclust=maxclust)
+                 random_state=None, algorithm='hmm',
+                 target_weight_multiplier=1.0):
+        clustering._BaseClusterer.__init__(
+            self, 
+            user_ink_data, 
+            target_user_id=target_user_id, 
+            min_cluster_size=min_cluster_size, 
+            maxclust=maxclust,
+            target_weight_multiplier=target_weight_multiplier)
+
         np.random.seed(random_state)
         
         if algorithm not in ('hmm','dtw'):

@@ -36,7 +36,8 @@ class _BaseClusterer(object):
 
     """
     def __init__(self, user_ink_data, target_user_id=None, 
-                 min_cluster_size=10, maxclust=4):
+                 min_cluster_size=10, maxclust=4, 
+                 target_weight_multiplier=1.0):
         self.user_ink_data = user_ink_data
         self.target_user_id = target_user_id
         self.min_cluster_size = min_cluster_size
@@ -57,14 +58,14 @@ class _BaseClusterer(object):
             if target_user_id is None:
                 target_weight = 1.0
             else:
-                target_weight = _target_weight(user_ink_data,
+                target_weight = _target_weight(user_ink_data, 
                                                target_user_id,
                                                label)
 
             weighted_ink = []
             for userid in user_ink_data:
                 if userid == target_user_id:
-                    w = target_weight
+                    w = target_weight * target_weight_multiplier
                 else:
                     w = 1.0
                 weighted_ink += [(ink, w) 
