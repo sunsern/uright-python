@@ -68,10 +68,14 @@ class PrototypeDTW(_Prototype):
        If alpha=1.0, the direction distance is ignored. If alpha=0.0,
        the location distance is ignored.
 
+    avg_dist : float
+       The average distance to from the prototype to instances
+       
     """
     def __init__(self, label, alpha=0.5):
         _Prototype.__init__(self, label)
         self.alpha = alpha
+        self.avg_dist = 0.0
 
     def train(self, obs, obs_weights=None, center_type='medoid'):
         """Estimates the prototype from a set of observations."""
@@ -79,9 +83,9 @@ class PrototypeDTW(_Prototype):
         def _find_medoid(obs, obs_weights, distmat):
             n = len(obs)
             weighted_distmat = distmat * np.tile(obs_weights,(n,1)).T
-            sum_distmat = (np.sum(weighted_distmat,axis=0) / 
+            avg_distmat = (np.sum(weighted_distmat,axis=0) / 
                            np.sum(obs_weights))
-            return (np.argmin(sum_distmat), np.amin(sum_distmat))
+            return (np.argmin(avg_distmat), np.amin(avg_distmat))
 
         def _find_centroid(obs, obs_weights, medoid):
             n_features = obs[0].shape[1]
@@ -131,6 +135,8 @@ class PrototypeDTW(_Prototype):
         else:
             self.model = obs[medoid_idx].copy()
 
+        self.avg_dist = avg_min_dist
+
         return -avg_min_dist
 
     def score(self, obs):
@@ -151,6 +157,7 @@ class PrototypeDTW(_Prototype):
         info = super(PrototypeDTW, self).toJSON()
         info['alpha'] = self.alpha
         info['center'] = self.model.astype(np.float16).tolist()
+        info['avg_dist'] = self.avg_dist
         return info
 
     def fromJSON(self,jsonObj):
@@ -158,6 +165,8 @@ class PrototypeDTW(_Prototype):
         super(PrototypeDTW, self).fromJSON(jsonObj)
         self.alpha = jsonObj['alpha']
         self.model = np.asarray(jsonObj['center'])
+        self.avg_dist = jsonObj['avg_dist']
+
 
 
 class PrototypeHMM(_Prototype):
