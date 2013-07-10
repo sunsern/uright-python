@@ -61,7 +61,7 @@ class TestLinkage(_BaseTest):
         cdtw = ClassifierDTW()
         cdtw.train(clustered_data)
         accuracy,_,_ = cdtw.test(self.label_ink_pairs)
-        self.assertGreater(accuracy, 92.0)
+        self.assertGreater(accuracy, 91.0)
 
 
     def test_optimize(self):

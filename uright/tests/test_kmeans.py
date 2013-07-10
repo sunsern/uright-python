@@ -77,7 +77,8 @@ class TestKMeansHMM(_BaseTest):
         super(TestKMeansHMM,self).setUp()
 
     def test_simple(self):
-        km = ClusterKMeans(self.user_ink_data)
+        km = ClusterKMeans(self.user_ink_data,
+                           min_cluster_size=10)
         clustered_data = km.clustered_data()
         chmm = ClassifierHMM()
         chmm.train(clustered_data)
@@ -85,7 +86,8 @@ class TestKMeansHMM(_BaseTest):
         self.assertGreater(accuracy, 94.0)
 
     def test_optimize(self):
-        km = ClusterKMeans(self.user_ink_data)
+        km = ClusterKMeans(self.user_ink_data,
+                           min_cluster_size=10)
         km.optimize_cluster_num(self.label_ink_pairs, verbose=False)
         clustered_data = km.clustered_data()
         chmm = ClassifierHMM()
@@ -94,7 +96,9 @@ class TestKMeansHMM(_BaseTest):
         self.assertGreater(accuracy, 96.0)
 
     def test_specific_target(self):
-        km = ClusterKMeans(self.user_ink_data, target_user_id='user_1')
+        km = ClusterKMeans(self.user_ink_data, 
+                           target_user_id='user_1',
+                           min_cluster_size=10)
         clustered_data = km.clustered_data()
         chmm = ClassifierHMM()
         chmm.train(clustered_data)

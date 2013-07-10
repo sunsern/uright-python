@@ -25,7 +25,7 @@ def _should_terminate(partitions, threshold=2):
 
 def _perform_kmeans(algorithm, label, obs, obs_weights=None, 
                     K=4, n_iter=10, init_partition=None,
-                    min_cluster_size=10, verbose=False):
+                    min_cluster_size=5, verbose=False):
 
     def _rep(s, m):
         a, b = divmod(m, len(s))
@@ -107,7 +107,7 @@ def _partition_subset(packed_data, verbose=False):
 class ClusterKMeans(clustering._BaseClusterer):
     """Cluster data with K-means algorithm"""
     def __init__(self, user_ink_data, target_user_id=None, 
-                 min_cluster_size=10, maxclust=4, 
+                 min_cluster_size=5, maxclust=4, 
                  random_state=None, algorithm='hmm',
                  target_weight_multiplier=1.0):
         clustering._BaseClusterer.__init__(
@@ -145,6 +145,7 @@ class ClusterKMeans(clustering._BaseClusterer):
             for prot_obj in prots:
                 if prot_obj is not None:
                     trained_prototypes.append(prot_obj)
+
         # test the trained prototypes with test data         
         curr_classifier = classifier_class()
         curr_classifier.trained_prototypes =  trained_prototypes
@@ -258,3 +259,4 @@ class ClusterKMeans(clustering._BaseClusterer):
                     if cluster_info[i][0][j] == (k+1)]
                 data[label].append(clustered_obs)
         return data
+

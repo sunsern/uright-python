@@ -4,7 +4,7 @@ from _state_reduction import _state_reduction
 from _beam_dtw import BeamSearchDTW
 from prototype import PrototypeHMM,PrototypeDTW
 
-def _max_score(obs, prot_list, log_priors):
+def _max_score(obs, prot_list, offsets):
     """
     Returns the label of the prototype in `prot_list`
     that has the maximum score (or log likelihood).
@@ -13,7 +13,7 @@ def _max_score(obs, prot_list, log_priors):
     for i in xrange(len(prot_list)):
         prot_obj = prot_list[i]
         logprob,_ = prot_obj.score(obs)
-        all_scores[i] = log_priors[i] + logprob
+        all_scores[i] = offsets[i] + logprob
     return prot_list[np.argmax(all_scores)].label
 
 class _Classifier(object):
@@ -126,7 +126,8 @@ class ClassifierDTW(_Classifier):
         self.alpha = alpha
 
     def _compute_log_priors(self):
-        self.log_priors = np.zeros(len(self._trained_prototypes))
+        self.log_priors = [prot.avg_dist 
+                           for prot in self._trained_prototypes]
 
     def train(self, clustered_ink_data, center_type='medoid', verbose=False):
         """Trains the classifier.
@@ -157,8 +158,9 @@ class ClassifierDTW(_Classifier):
                         print ("Prototype for "
                                "%s (%d instances, avg.dist = %0.2f)"%(
                                 label, len(ink_list), avgdist))
+
         self._compute_log_priors()
-        
+
     def state_reduction(self, test_ink, n_iter=30, verbose=False):
         """Performs state reduction on the trained prototypes.
 
@@ -177,11 +179,14 @@ class ClassifierDTW(_Classifier):
 
         prototype_dict = {}
         num_obs_dict = {}
+        avg_dist_dict = {}
         for prot_obj in self._trained_prototypes:
             prototype_dict.setdefault(prot_obj.label,
                                       []).append(prot_obj.model)
             num_obs_dict.setdefault(prot_obj.label,
                                     []).append(prot_obj.num_obs)
+            avg_dist_dict.setdefault(prot_obj.label,
+                                     []).append(prot_obj.avg_dist)
 
         # run the state reduction algorithm
         reduced_prototypes = _state_reduction(prototype_dict, 
@@ -195,6 +200,8 @@ class ClassifierDTW(_Classifier):
                 prot_obj = PrototypeDTW(label, alpha=self.alpha)
                 prot_obj.model = p
                 prot_obj.num_obs = num_obs_dict[label][i]
+                # TODO: calculate avg. dist precisely
+                prot_obj.avg_dist = avg_dist_dict[label][i]
                 trained_prototypes.append(prot_obj)
 
         new_c = ClassifierDTW(min_cluster_size=self.min_cluster_size,
@@ -203,7 +210,7 @@ class ClassifierDTW(_Classifier):
         return new_c
 
     def toJSON(self):
-        info = super(ClassifierHMM,self).toJSON()
+        info = super(ClassifierDTW,self).toJSON()
         info['prototype_type'] = 'DTW'
         return info
 
@@ -238,7 +245,9 @@ class ClassifierBeamDTW(ClassifierDTW):
     def train(self, clustered_ink_data, center_type='medoid'):
         super(ClassifierBeamDTW, self).train(clustered_ink_data, 
                                              center_type=center_type)
-        self.beam = BeamSearchDTW(self.trained_prototypes,
+        self.labels = sorted(set([prot.label 
+                                  for prot in self._trained_prototypes]))
+        self.beam = BeamSearchDTW(self._trained_prototypes,
                                   max_states=self.beam_width,
                                   alpha=self.beam_alpha)
     
@@ -256,47 +265,41 @@ class ClassifierBeamDTW(ClassifierDTW):
 
     def classify(self, obs):
         self.beam.reset()
-        for i in range(obs.shape[0]):
+        for i in xrange(obs.shape[0]):
             self.beam.add_point(obs[i,:])
         ll = self.beam.score()
         return self._trained_prototypes[np.argmax(ll)].label
 
+    def posterior(self, obs):
+
+        def _label_prob(ll):
+            probdict = {}
+            for i,prot in enumerate(self._trained_prototypes):
+                prob = probdict.get(prot.label, 0)
+                probdict[prot.label] = prob + np.exp(ll[i])
+            v = np.zeros(len(self.labels))
+            for i,label in enumerate(self.labels):
+                v[i] = probdict[label]
+            return v / np.sum(v)
+
+        post = np.zeros((obs.shape[0],len(self.labels)))
+        self.beam.reset()
+        for i in xrange(obs.shape[0]):
+            self.beam.add_point(obs[i,:])
+            post[i,:] = _label_prob(self.beam.loglikelihood())
+        return post
+
 
     def state_reduction(self, test_ink, n_iter=30, verbose=False):
-        """
-        Returns a new instance of ClassifierDTW
-        """
-        test_ink_dict = {}
-        for label, ink in test_ink:
-            test_ink_dict.setdefault(label,[]).append(ink)
-
-        prototype_dict = {}
-        num_obs_dict = {}
-        for prot_obj in self._trained_prototypes:
-            prototype_dict.setdefault(prot_obj.label,
-                                      []).append(prot_obj.model)
-            num_obs_dict.setdefault(prot_obj.label,
-                                    []).append(prot_obj.num_obs)
-
-        # run the state reduction algorithm
-        reduced_prototypes = _state_reduction(prototype_dict, 
-                                              test_ink_dict,
-                                              verbose=verbose)
+        c = super(ClassifierBeamDTW, self).state_reduction(test_ink,
+                                                           n_iter=n_iter,
+                                                           verbose=verbose)
         
-        # unpack the reduced prototypes
-        trained_prototypes = []
-        for label in reduced_prototypes:
-            for i,p in enumerate(reduced_prototypes[label]):
-                prot_obj = PrototypeDTW(label, alpha=self.alpha)
-                prot_obj.model = p
-                prot_obj.num_obs = num_obs_dict[label][i]
-                trained_prototypes.append(prot_obj)
-
         new_c = ClassifierBeamDTW(min_cluster_size=self.min_cluster_size,
                                   alpha=self.alpha,
                                   beam_width=self.beam_width,
                                   beam_alpha=self.beam_alpha)
-        new_c.trained_prototypes = trained_prototypes
+        new_c.trained_prototypes = c.trained_prototypes
         new_c.beam = BeamSearchDTW(new_c.trained_prototypes,
                                    max_states=new_c.beam_width,
                                    alpha=new_c.beam_alpha)
