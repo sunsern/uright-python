@@ -10,9 +10,19 @@ import numpy as np
 
 from sklearn.hmm import normalize
 
+from _state_reduction import _state_reduction
 from dtw import compute_dtw_distance, compute_dtw_vector
 from weightedhmm import WeightedGaussianHMM 
 from inkutils import update_directions
+
+def _compute_avg_dist(model, obs, obs_weights, alpha):
+    dist_from_model = np.asarray(
+        [obs_weights[i] * 
+         compute_dtw_distance(model, each_obs, alpha=alpha)
+         for i, each_obs in enumerate(obs)])
+    avg_dist = (np.sum(obs_weights * dist_from_model) / 
+                obs_weights.sum())
+    return avg_dist
 
 class _Prototype(object):
     """Prototype base class.
@@ -75,17 +85,18 @@ class PrototypeDTW(_Prototype):
     def __init__(self, label, alpha=0.5):
         _Prototype.__init__(self, label)
         self.alpha = alpha
-        self.avg_dist = 0.0
+        self.avg_dist = 1.0
 
-    def train(self, obs, obs_weights=None, center_type='medoid'):
+    def train(self, obs, obs_weights=None, 
+              center_type='medoid', state_reduction=False):
         """Estimates the prototype from a set of observations."""
 
         def _find_medoid(obs, obs_weights, distmat):
             n = len(obs)
             weighted_distmat = distmat * np.tile(obs_weights,(n,1)).T
-            avg_distmat = (np.sum(weighted_distmat,axis=0) / 
-                           np.sum(obs_weights))
-            return (np.argmin(avg_distmat), np.amin(avg_distmat))
+            avg_distmat = (weighted_distmat.sum(axis=0) / 
+                           obs_weights.sum())
+            return avg_distmat.argmin()
 
         def _find_centroid(obs, obs_weights, medoid):
             n_features = obs[0].shape[1]
@@ -94,18 +105,12 @@ class PrototypeDTW(_Prototype):
             feature_mat = np.nan_to_num(feature_mat)
             weighted_feature_mat = feature_mat * np.tile(
                 obs_weights, (feature_mat.shape[1],1)).T
-            mean_ink = (np.sum(weighted_feature_mat,axis=0) / 
-                        np.sum(obs_weights))
-            mean_ink = np.reshape(mean_ink, (-1,n_features), order='C')
+            # reconstruct weighted-average ink
+            mean_ink = (weighted_feature_mat.sum(axis=0) / 
+                        obs_weights.sum())
+            mean_ink = mean_ink.reshape((-1,n_features), order='C')
             mean_ink = mean_ink + medoid
-
-            weighted_dists = [obs_weights[i] * 
-                              compute_dtw_distance(mean_ink, obs[i], 
-                                                   alpha=self.alpha) 
-                              for i in xrange(len(obs))]
-            avg_dist = np.sum(weighted_dists) / np.sum(obs_weights)
-
-            return (update_directions(mean_ink), avg_dist)
+            return update_directions(mean_ink)
 
         n = len(obs)
         self.num_obs = n
@@ -127,22 +132,26 @@ class PrototypeDTW(_Prototype):
                                                     alpha=self.alpha)
                 distMat[j,i] = distMat[i,j]
 
-        (medoid_idx, avg_min_dist) = _find_medoid(obs, obs_weights, distMat)
-        
+        # compute the center
         if center_type == 'centroid':
-            (self.model, avg_min_dist) = _find_centroid(obs, obs_weights, 
-                                                        obs[medoid_idx])
+            medoid_idx = _find_medoid(obs, obs_weights, distMat)
+            self.model = _find_centroid(obs, obs_weights, obs[medoid_idx])
         else:
+            medoid_idx = _find_medoid(obs, obs_weights, distMat)
             self.model = obs[medoid_idx].copy()
-
-        self.avg_dist = avg_min_dist
-
-        return -avg_min_dist
+        
+        if state_reduction:
+            self.model = _state_reduction(self.model, obs)
+            
+        self.avg_dist = _compute_avg_dist(self.model, obs, 
+                                          obs_weights, self.alpha)
+        return -self.avg_dist
 
     def score(self, obs):
         """Calculates the score of an observation.
         
-        The score is defined as negative of the DTW distance.
+        The score is defined as negative of the DTW distance
+        normalized by the expected value.
 
         Returns
         -------
@@ -150,7 +159,7 @@ class PrototypeDTW(_Prototype):
 
         """
         dist = compute_dtw_distance(self.model, obs, alpha=self.alpha)
-        return -dist, None
+        return (-dist / self.avg_dist), None
 
     def toJSON(self):
         """Returns a JSON dictionary representing the prototype."""

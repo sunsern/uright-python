@@ -8,6 +8,8 @@ _DX_IDX = inkutils.INK_STRUCT['DX_IDX']
 _DY_IDX = inkutils.INK_STRUCT['DY_IDX']
 _PU_IDX = inkutils.INK_STRUCT['PU_IDX']
 
+__DEBUG=False
+
 def _pathcount(template_ink, ink, alpha=0.5, penup_z=10.0):
     m = template_ink.shape[0]
     n = ink.shape[0]
@@ -32,48 +34,24 @@ def _pathcount(template_ink, ink, alpha=0.5, penup_z=10.0):
             else:
                 new_u[j] = new_u[j-1] + d[i,j]
                 new_v[j] = new_v[j-1] + 1
-        max_ind = np.argmax(-np.sqrt(new_u) / new_v)
+        max_ind = np.argmax(-new_u / new_v)
         peak_count[max_ind] += 1
         u = new_u
         v = new_v
     return peak_count
 
+def _compute_fraction(prototype, test_ink, alpha=0.5, penup_z=10.0):
+    fraction = np.zeros(prototype.shape[0])
+    for ink in test_ink:
+        fraction += _pathcount(prototype, ink)
+    return fraction / len(test_ink)
 
-def _compute_path(prototype_dict, test_ink_dict, alpha=0.5, penup_z=10.0):
-
-    def _closest_prototype(p_array, ink, alpha, penup_z):
-        all_d = np.zeros(len(p_array))
-        for i in range(len(p_array)):
-            all_d[i] = compute_dtw_distance(ink, 
-                                            p_array[i],
-                                            alpha=alpha, 
-                                            penup_z=penup_z)
-        return np.argmin(all_d)
-
-    path_info = []
-    for key in prototype_dict:
-        p_array = prototype_dict[key]
-        all_count = [ np.zeros(p.shape[0]) for p in p_array ]
-        all_hit = np.zeros(len(p_array))
-        for ink in test_ink_dict[key]:
-            idx = _closest_prototype(p_array,ink,alpha,penup_z)
-            peak_count = _pathcount(p_array[idx],ink)
-            all_count[idx] += peak_count
-            all_hit[idx] += 1
-        for i in range(len(p_array)):
-            path_info.append((key,
-                              prototype_dict[key][i],
-                              all_count[i],
-                              all_hit[i]))
-    return path_info
-
-
-def _merge_bad_states(prototype, path_fraction, threshold=0.50, verbose=False):
+def _merge_bad_states(prototype, path_fraction, threshold=0.50):
     path_fraction = np.asarray(path_fraction)
     plen = prototype.shape[0]
     minidx = np.argmin(path_fraction)
     if prototype[minidx,_PU_IDX] > 0:
-        if verbose: print "[merge] skip"
+        if __DEBUG: print "[merge] skip"
         return prototype
 
     t = np.amin(path_fraction)
@@ -89,11 +67,11 @@ def _merge_bad_states(prototype, path_fraction, threshold=0.50, verbose=False):
             ui += 1
 
         if li == ui:
-            if verbose: print "[merge] delete %d"%li
+            if __DEBUG: print "[merge] delete %d"%li
             new_proto = np.delete(prototype,ui,axis=0)
             return new_proto
         elif li > 0 and ui < plen - 1:            
-            if verbose: print "[merge] merge %d %d"%(li,ui)
+            if __DEBUG: print "[merge] merge %d %d"%(li,ui)
             avg_state = np.mean(prototype[li:ui+1,:],axis=0)
             # recompute the pen direction
             dx = avg_state[_DX_IDX]
@@ -111,7 +89,6 @@ def _merge_bad_states(prototype, path_fraction, threshold=0.50, verbose=False):
             return new_proto
     return prototype
 
-
 def _remove_useless_states(prototype, path_fraction, threshold=0.01):
     path_fraction = np.asarray(path_fraction)
     # find indices of states to remove
@@ -120,37 +97,31 @@ def _remove_useless_states(prototype, path_fraction, threshold=0.01):
     new_path_fraction = np.delete(path_fraction, delete_idx)
     return (new_prototype, new_path_fraction)
 
+def _state_reduction(prototype, test_ink, 
+                     n_iter=30, merge_threshold=0.6, 
+                     remove_threshold=0.01):
+    """Reduce number of states of `prototype` 
+    """
+    current_prototype = prototype
 
-def _state_reduction(prototype_dict, test_ink_dict, 
-                     n_iter=30, merge_threshold=0.5, 
-                     remove_threshold=0.01, verbose=False):
-    prototypes = prototype_dict.copy()
     for it in range(n_iter):
-        path_info = _compute_path(prototypes, test_ink_dict)
-        reduced_prototypes = {}
-        old_total_length = 0
-        new_total_length = 0
-        if verbose: print "[state-reduction] iter %d"%it
-        for label,old_proto,count,hit in path_info:
-            if hit > 0:
-                fraction = np.asarray(count) / hit 
-                old_total_length += old_proto.shape[0]
-
-                (new_proto,fraction) = _remove_useless_states(
-                    old_proto, fraction, threshold=remove_threshold)
-
-                new_proto = _merge_bad_states(new_proto,fraction,
-                                              threshold=merge_threshold,
-                                              verbose=verbose)
-                new_total_length += new_proto.shape[0]
-                reduced_prototypes.setdefault(label,[]).append(new_proto)
-                if verbose: print " > %s: %d -> %d"%(label, 
-                                                     old_proto.shape[0], 
-                                                     new_proto.shape[0])
-
-        prototypes = reduced_prototypes
-
-        if (old_total_length == new_total_length):
+        if __DEBUG: print "[state-reduction] iter %d"%it
+        fraction = _compute_fraction(current_prototype, test_ink)
+        
+        # remove rarely states
+        (new_prototype,fraction) = _remove_useless_states(
+            current_prototype, fraction, threshold=remove_threshold)
+        
+        # merge similar states
+        new_prototype = _merge_bad_states(new_prototype, fraction,
+                                          threshold=merge_threshold)
+        
+        if __DEBUG: print " > %d -> %d"%(current_prototype.shape[0], 
+                                         new_prototype.shape[0])
+        # stop when no update
+        if (current_prototype.shape[0] == new_prototype.shape[0]):
             break
+        
+        current_prototype = new_prototype
 
-    return prototypes
+    return current_prototype
