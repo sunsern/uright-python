@@ -7,7 +7,7 @@ def _max_score(obs, prot_list, offsets):
     """
     all_scores = np.empty(len(prot_list))
     for i, prot_obj in enumerate(prot_list):
-        score,_ = prot_obj.score(obs)
+        score = prot_obj.score(obs)
         all_scores[i] = offsets[i] + score
     return prot_list[all_scores.argmax()].label
 

@@ -39,24 +39,24 @@ class TestPrototypeDTW(_BaseTest):
         self.assertEqual(p_data, q.toJSON())
 
     def test_score(self):
-        score0,_ = self.p.score(self.ink_data[0])
+        score0 = self.p.score(self.ink_data[0])
         if VERBOSE: print score0
         self.assertAlmostEqual(score0, -1.247, delta=1e-3)
-        score1,_ = self.p.score(self.ink_data[1])
+        score1 = self.p.score(self.ink_data[1])
         if VERBOSE: print score1
         self.assertAlmostEqual(score1, -1.161, delta=1e-3)
         
     def test_centroid(self):
         q = PrototypeDTW('u', alpha=0.5)
         q.train(self.ink_data, center_type="centroid")
-        score0,_ = q.score(self.ink_data[0])
+        score0 = q.score(self.ink_data[0])
         if VERBOSE: print score0
         self.assertAlmostEqual(score0, -1.369, delta=1e-3)
 
     def test_state_reduction(self):
         q = PrototypeDTW('u', alpha=0.5)
         q.train(self.ink_data, center_type="centroid", state_reduction=True)
-        score0,_ = q.score(self.ink_data[0])
+        score0 = q.score(self.ink_data[0])
         if VERBOSE: print score0
         self.assertAlmostEqual(score0, -1.370, delta=1e-3)
 
@@ -78,9 +78,9 @@ class TestPrototypeHMM(_BaseTest):
         self.assertEqual(p_data, q.toJSON())
 
     def test_score(self):
-        score0,_ = self.p.score(self.ink_data[0])
+        score0 = self.p.score(self.ink_data[0])
         self.assertAlmostEqual(score0, 47.772, delta=1e-3)
-        score1,_ = self.p.score(self.ink_data[1])
+        score1 = self.p.score(self.ink_data[1])
         self.assertAlmostEqual(score1, 53.725, delta=1e-3)
         
 if __name__ == "__main__":

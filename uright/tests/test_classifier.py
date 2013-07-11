@@ -12,7 +12,7 @@ from classifier import (ClassifierDTW,
                         ClassifierHMM,
                         ClassifierBeam)
 
-VERBOSE=False
+VERBOSE=True
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
@@ -51,14 +51,14 @@ class TestClassifierDTW(_BaseTest):
         cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='medoid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 86
         self.assertGreater(accuracy, 86.0)
 
     def test_centroid(self):
         cDTW = ClassifierDTW(alpha=0.5,min_cluster_size=10)
         cDTW.train(self.clustered_data,center_type='centroid')
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 87
         self.assertGreater(accuracy, 87.0)
 
     def test_state_reduction(self):
@@ -66,7 +66,7 @@ class TestClassifierDTW(_BaseTest):
         cDTW.train(self.clustered_data,center_type='medoid',
                    state_reduction=True)
         accuracy,_,_ = cDTW.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 87
         self.assertGreater(accuracy, 87.0)
 
 class TestClassifierHMM(_BaseTest):
@@ -77,7 +77,7 @@ class TestClassifierHMM(_BaseTest):
         cHMM = ClassifierHMM(min_cluster_size=10)
         cHMM.train(self.clustered_data)
         accuracy,_,_ = cHMM.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 92
         self.assertGreater(accuracy, 92.0)
         
 class TestClassifierBeam(_BaseTest):
@@ -89,7 +89,7 @@ class TestClassifierBeam(_BaseTest):
                               beam_alpha=0.1)
         beam.train(self.clustered_data)
         accuracy,_,_ = beam.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 87
         self.assertGreater(accuracy, 87.0)
 
     def test_state_reduction(self):
@@ -97,7 +97,7 @@ class TestClassifierBeam(_BaseTest):
                               beam_alpha=0.1)
         beam.train(self.clustered_data, state_reduction=True)
         accuracy,_,_ = beam.test(self.label_ink_pairs)
-        if VERBOSE: print accuracy
+        if VERBOSE: print accuracy, 90
         self.assertGreater(accuracy, 90.0)
     
 if __name__ == "__main__":

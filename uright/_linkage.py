@@ -49,7 +49,7 @@ def _partition_subset(packed_data, distmat=None, verbose=False):
     return (partition, distmat)
 
 def _train_prototypes(weighted_ink, partition, label, 
-                      min_cluster_size=5, center_type='medoid'):
+                      min_cluster_size=5, center_type='centroid'):
     obs, obs_weights = zip(*weighted_ink)
     obs_weights = np.asarray(obs_weights)
     trained_prototypes = []
@@ -67,7 +67,7 @@ def _train_prototypes(weighted_ink, partition, label,
     return trained_prototypes
 
 def _train_all_prototypes(weighted_ink_list, cluster_info, labels, 
-                          min_cluster_size=5, center_type='medoid'):
+                          min_cluster_size=5, center_type='centroid'):
     trained_prototypes = []
     for i in range(len(labels)):
         trained_prototypes += _train_prototypes(

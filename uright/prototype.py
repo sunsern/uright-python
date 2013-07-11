@@ -88,7 +88,7 @@ class PrototypeDTW(_Prototype):
         self.avg_dist = 1.0
 
     def train(self, obs, obs_weights=None, 
-              center_type='medoid', state_reduction=False):
+              center_type='centroid', state_reduction=False):
         """Estimates the prototype from a set of observations."""
 
         def _find_medoid(obs, obs_weights, distmat):
@@ -110,7 +110,10 @@ class PrototypeDTW(_Prototype):
                         obs_weights.sum())
             mean_ink = mean_ink.reshape((-1,n_features), order='C')
             mean_ink = mean_ink + medoid
-            return update_directions(mean_ink)
+            # It seems like not updating the direction yeilds 
+            # a better result.
+            #return update_directions(mean_ink)
+            return mean_ink
 
         n = len(obs)
         self.num_obs = n
@@ -159,7 +162,7 @@ class PrototypeDTW(_Prototype):
 
         """
         dist = compute_dtw_distance(self.model, obs, alpha=self.alpha)
-        return (-dist / self.avg_dist), None
+        return (-dist / self.avg_dist)
 
     def toJSON(self):
         """Returns a JSON dictionary representing the prototype."""
@@ -260,21 +263,26 @@ class PrototypeHMM(_Prototype):
 
         return self.model.fit(obs, obs_weights=obs_weights)
 
-    def score(self, obs):
+    def score(self, obs, last_state_only=True):
         """Calculates the score of an observation.
-        
-        The score is defined as the log likelihood of the observation
-        under the model.
-
+       
         Returns
         -------
-        (loglikelihood, fwdlattice)
+        score : float
+          If last_state_only=False, the score is defined as the log
+          likelihood of the observation under the model. Otherwise,
+          the score is defined as the log likelihood at the last state
+          only.
 
         """
         obs = np.asarray(obs)
         framelogprob = self.model._compute_log_likelihood(obs)
-        logprob, fwdlattice = self.model._do_forward_pass(framelogprob)
-        return logprob, fwdlattice
+        if last_state_only:
+            _, fwdlattice = self.model._do_forward_pass(framelogprob)
+            return fwdlattice[-1,-1]
+        else:
+            logprob, _ = self.model._do_forward_pass(framelogprob)
+            return logprob
 
     def toJSON(self):
         """Returns a JSON dictionary representing the prototype."""

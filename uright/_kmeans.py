@@ -10,7 +10,7 @@ def _closest_prototype(obs, prot_list):
     for i in range(len(prot_list)):
         prot_obj = prot_list[i]
         if prot_obj is not None:
-            scores[i],_ = prot_obj.score(obs)
+            scores[i] = prot_obj.score(obs)
     return (scores.argmax(), scores.max())
 
 def _should_terminate(partitions, threshold=2):
@@ -24,7 +24,7 @@ def _should_terminate(partitions, threshold=2):
 
 
 def _perform_kmeans(algorithm, label, obs, obs_weights=None, 
-                    K=4, n_iter=10, init_partition=None,
+                    K=4, n_iter=20, init_partition=None,
                     min_cluster_size=5, verbose=False):
 
     def _rep(s, m):
