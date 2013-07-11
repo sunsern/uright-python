@@ -50,8 +50,8 @@ def compute_dtw_vector(center_ink, ink_array, alpha=0.5, penup_z=10.0):
     for i in xrange(1,n):
         for j in xrange(1,m):
             dtw[i,j] = combined_d[i,j] + min(dtw[i-1,j], 
-                                             min(dtw[i-1,j-1], 
-                                                 dtw[i,j-1]))
+                                             dtw[i-1,j-1], 
+                                             dtw[i,j-1])
             if (dtw[i-1,j-1] < dtw[i-1,j] and dtw[i-1,j-1] < dtw[i,j-1]):
                 path[i,j] = _DIAG
             elif (dtw[i-1,j] < dtw[i-1,j-1] and dtw[i-1,j] < dtw[i,j-1]):

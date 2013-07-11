@@ -111,7 +111,6 @@ class BeamForward(object):
         for i in range(len(self.centers)):
             hp.heappush(self._active_states,(-self.log_priors[i], 
                                               self.log_priors[i], i, -1))
-            #hp.heappush(self._active_states,(0, 0, i, -1))
             
     def add_point(self, org_point):
         # online normalize

@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.utils.extmath import logsumexp
 
 from classifier import _Classifier
 from prototype import PrototypeHMM
@@ -42,6 +43,9 @@ class ClassifierHMM(_Classifier):
                                "%s (%d instances, avg_ll = %0.1f)"%(
                                 label, len(ink_list), loglike/len(ink_list)))
         self._compute_log_priors()
+
+    def posterior(self, obs):
+        pass
         
     def toJSON(self):
         info = super(ClassifierHMM,self).toJSON()

@@ -58,7 +58,8 @@ class ClassifierBeam(ClassifierDTW):
         self.beam.reset()
         for i in xrange(obs.shape[0]):
             self.beam.add_point(obs[i,:])
-        ll = self.beam.loglikelihood()
+        #ll = self.beam.loglikelihood()
+        ll = self.beam.scores()
         return self._trained_prototypes[ll.argmax()].label
 
     def posterior(self, obs):
