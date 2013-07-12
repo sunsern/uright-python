@@ -24,9 +24,11 @@ def _min(a,b):
     if a < b: return a
     else: return b
     
-def _logsumexp_pair(a,b):
-    c = _max(a,b)
-    return c + log(exp(a-c) + exp(b-c))
+def _logaddexp(a,b):
+    if a < b:
+        return b + log(1 + exp(a-b))
+    else:
+        return a + log(1 + exp(b-a))
 
 class BeamForward(object):
     """Beam-search forward algorithm
@@ -49,7 +51,7 @@ class BeamForward(object):
         if algorithm == 'max':
             self._combine = _max
         else:
-            self._combine = _logsumexp_pair
+            self._combine = _logaddexp
 
         self.algorithm = algorithm
         self.centers = [prot_obj.model.copy()
@@ -192,5 +194,5 @@ class BeamForward(object):
     def loglikelihood(self):
         logsumprob = np.ones(len(self.centers)) * -np.inf
         for (_, u, i, j) in self._active_states:
-            logsumprob[i] = _logsumexp_pair(logsumprob[i], u)
+            logsumprob[i] = _logaddexp(logsumprob[i], u)
         return logsumprob
