@@ -76,7 +76,6 @@ def _compute_combined_distance(np.ndarray[dtype_t, ndim=2] ink_array1 not None,
     stdev_dir = np.std(d_dir[or_penup < 1])
 
     if stdev_xy < _MIN_STDEV: stdev_xy = _MIN_STDEV
-
     if stdev_dir < _MIN_STDEV: stdev_dir = _MIN_STDEV
 
     penup_penalty = max(penup_z * (stdev_xy * alpha + 
@@ -127,4 +126,4 @@ def _execute_dtw_in_c(np.ndarray[dtype_t, ndim=2] d_combined,
                 dtw[i,j] = t3 + d_combined[i,j];
                 pl[i,j] = pl[i,j-1] + 1
 
-    return sqrt(dtw[n-1,m-1]) / pl[n-1,m-1]
+    return dtw[n-1,m-1] / pl[n-1,m-1]

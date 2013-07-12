@@ -16,12 +16,13 @@ from weightedhmm import WeightedGaussianHMM
 from inkutils import update_directions
 
 def _compute_avg_dist(model, obs, obs_weights, alpha):
-    dist_from_model = np.asarray(
-        [compute_dtw_distance(model, each_obs, alpha=alpha)
-         for i, each_obs in enumerate(obs)])
-    avg_dist = (np.sum(obs_weights * dist_from_model) / 
-                obs_weights.sum())
-    return avg_dist
+    #dist_from_model = np.asarray(
+    #    [compute_dtw_distance(model, each_obs, alpha=alpha)
+    #     for i, each_obs in enumerate(obs)])
+    #avg_dist = (np.sum(obs_weights * dist_from_model) / 
+    #            obs_weights.sum())
+    #return avg_dist
+    return 1.0
 
 class _Prototype(object):
     """Prototype base class.
