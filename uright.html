@@ -53,36 +53,8 @@
             
   <div class="section" id="uright-package">
 <h1>uright Package<a class="headerlink" href="#uright-package" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="module-uright._beam_dtw">
-<span id="beam-dtw-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">_beam_dtw</span></tt> Module<a class="headerlink" href="#module-uright._beam_dtw" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="uright._beam_dtw.BeamSearchDTW">
-<em class="property">class </em><tt class="descclassname">uright._beam_dtw.</tt><tt class="descname">BeamSearchDTW</tt><big>(</big><em>trained_prototypes</em>, <em>max_states=None</em>, <em>normalization=False</em>, <em>skips=5</em>, <em>alpha=0.5</em>, <em>penup_penalty=10.0</em>, <em>algorithm='max'</em><big>)</big><a class="reference internal" href="_modules/uright/_beam_dtw.html#BeamSearchDTW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright._beam_dtw.BeamSearchDTW" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>Beam-search DTW</p>
-<p class="rubric">Methods</p>
-<dl class="method">
-<dt id="uright._beam_dtw.BeamSearchDTW.add_point">
-<tt class="descname">add_point</tt><big>(</big><em>org_point</em><big>)</big><a class="reference internal" href="_modules/uright/_beam_dtw.html#BeamSearchDTW.add_point"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright._beam_dtw.BeamSearchDTW.add_point" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright._beam_dtw.BeamSearchDTW.loglikelihood">
-<tt class="descname">loglikelihood</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/uright/_beam_dtw.html#BeamSearchDTW.loglikelihood"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright._beam_dtw.BeamSearchDTW.loglikelihood" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright._beam_dtw.BeamSearchDTW.reset">
-<tt class="descname">reset</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/uright/_beam_dtw.html#BeamSearchDTW.reset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright._beam_dtw.BeamSearchDTW.reset" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright._beam_dtw.BeamSearchDTW.score">
-<tt class="descname">score</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/uright/_beam_dtw.html#BeamSearchDTW.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright._beam_dtw.BeamSearchDTW.score" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
+<div class="section" id="beam-dtw-module">
+<h2><tt class="xref py py-mod docutils literal"><span class="pre">_beam_dtw</span></tt> Module<a class="headerlink" href="#beam-dtw-module" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="module-uright._dtwc">
 <span id="dtwc-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">_dtwc</span></tt> Module<a class="headerlink" href="#module-uright._dtwc" title="Permalink to this headline">¶</a></h2>
@@ -98,180 +70,6 @@
 </div>
 <div class="section" id="module-uright.classifier">
 <span id="classifier-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">classifier</span></tt> Module<a class="headerlink" href="#module-uright.classifier" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="uright.classifier.ClassifierBeamDTW">
-<em class="property">class </em><tt class="descclassname">uright.classifier.</tt><tt class="descname">ClassifierBeamDTW</tt><big>(</big><em>min_cluster_size=5</em>, <em>alpha=0.5</em>, <em>beam_width=None</em>, <em>beam_alpha=0.5</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierBeamDTW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierBeamDTW" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#uright.classifier.ClassifierDTW" title="uright.classifier.ClassifierDTW"><tt class="xref py py-class docutils literal"><span class="pre">uright.classifier.ClassifierDTW</span></tt></a></p>
-<p>Beam-search DTW classifier</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>min_cluster_size</strong> : int</p>
-<blockquote>
-<div><p>Minimum number of examples in a cluster.</p>
-</div></blockquote>
-<p><strong>alpha</strong> : float</p>
-<blockquote>
-<div><p>Alpha for DTW algorithm (used in training)</p>
-</div></blockquote>
-<p><strong>beam_width</strong> : int, None</p>
-<blockquote>
-<div><p>Number of states kept in memeory at each time step.</p>
-</div></blockquote>
-<p><strong>beam_alpha</strong> : float</p>
-<blockquote class="last">
-<div><p>Alpha for the beam decoding (used in classify)</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
-<dl class="method">
-<dt id="uright.classifier.ClassifierBeamDTW.classify">
-<tt class="descname">classify</tt><big>(</big><em>obs</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierBeamDTW.classify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierBeamDTW.classify" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierBeamDTW.state_reduction">
-<tt class="descname">state_reduction</tt><big>(</big><em>test_ink</em>, <em>n_iter=30</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierBeamDTW.state_reduction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierBeamDTW.state_reduction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a new instance of ClassifierDTW</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierBeamDTW.test">
-<tt class="descname">test</tt><big>(</big><em>label_ink_data</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierBeamDTW.test"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierBeamDTW.test" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierBeamDTW.train">
-<tt class="descname">train</tt><big>(</big><em>clustered_ink_data</em>, <em>center_type='medoid'</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierBeamDTW.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierBeamDTW.train" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="uright.classifier.ClassifierDTW">
-<em class="property">class </em><tt class="descclassname">uright.classifier.</tt><tt class="descname">ClassifierDTW</tt><big>(</big><em>min_cluster_size=5</em>, <em>alpha=0.5</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierDTW"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierDTW" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">uright.classifier._Classifier</span></tt></p>
-<p>Classifier with DTW prototypes</p>
-<p class="rubric">Attributes</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="26%" />
-<col width="8%" />
-<col width="66%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td>min_cluster_size</td>
-<td>int</td>
-<td>Minimum number of examples in a cluster.</td>
-</tr>
-<tr class="row-even"><td>alpha</td>
-<td>float</td>
-<td>Defult alpha for DTW algorithm</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
-<dl class="method">
-<dt id="uright.classifier.ClassifierDTW.state_reduction">
-<tt class="descname">state_reduction</tt><big>(</big><em>test_ink</em>, <em>n_iter=30</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierDTW.state_reduction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierDTW.state_reduction" title="Permalink to this definition">¶</a></dt>
-<dd><p>Performs state reduction on the trained prototypes.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>test_ink</strong> : list</p>
-<blockquote>
-<div><p>List of observations.</p>
-</div></blockquote>
-<p><strong>n_iter</strong> : int</p>
-<blockquote class="last">
-<div><p>Number of iterations to perfrom reduction.</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierDTW.toJSON">
-<tt class="descname">toJSON</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierDTW.toJSON"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierDTW.toJSON" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierDTW.train">
-<tt class="descname">train</tt><big>(</big><em>clustered_ink_data</em>, <em>center_type='medoid'</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierDTW.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierDTW.train" title="Permalink to this definition">¶</a></dt>
-<dd><p>Trains the classifier.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>clustered_ink_data</strong> : dictionary</p>
-<blockquote>
-<div><p>Training data with the following structure.
-clustered_ink_data[label][cluster_id] = [ink1, ink2, ... inkN]</p>
-</div></blockquote>
-<p><strong>center_type</strong> : {&#8216;medoid&#8217;, &#8216;centroid&#8217;}</p>
-<blockquote class="last">
-<div><p>Type of the DTW center.</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="uright.classifier.ClassifierHMM">
-<em class="property">class </em><tt class="descclassname">uright.classifier.</tt><tt class="descname">ClassifierHMM</tt><big>(</big><em>min_cluster_size=10</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierHMM"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierHMM" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">uright.classifier._Classifier</span></tt></p>
-<p>Classifier with HMM-based prototypes</p>
-<p class="rubric">Attributes</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="28%" />
-<col width="5%" />
-<col width="67%" />
-</colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td>min_cluster_size</td>
-<td>int</td>
-<td>Minimum number of examples in a cluster</td>
-</tr>
-</tbody>
-</table>
-<p class="rubric">Methods</p>
-<dl class="method">
-<dt id="uright.classifier.ClassifierHMM.toJSON">
-<tt class="descname">toJSON</tt><big>(</big><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierHMM.toJSON"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierHMM.toJSON" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="method">
-<dt id="uright.classifier.ClassifierHMM.train">
-<tt class="descname">train</tt><big>(</big><em>clustered_ink_data</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="_modules/uright/classifier.html#ClassifierHMM.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.classifier.ClassifierHMM.train" title="Permalink to this definition">¶</a></dt>
-<dd><p>Train the classifier from clustered_data</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>clustered_ink_data</strong> : dictionary</p>
-<blockquote class="last">
-<div><p>clustered_ink_data[label] = [ [(ink,weight) from each cluster] ]</p>
-</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
 </div>
 <div class="section" id="module-uright.clustering">
 <span id="clustering-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">clustering</span></tt> Module<a class="headerlink" href="#module-uright.clustering" title="Permalink to this headline">¶</a></h2>
@@ -353,7 +151,7 @@ always has the same length as <cite>center_ink</cite>.</p>
 
 <dl class="function">
 <dt id="uright.inkutils.user_normalized_ink">
-<tt class="descclassname">uright.inkutils.</tt><tt class="descname">user_normalized_ink</tt><big>(</big><em>user_raw_ink</em><big>)</big><a class="reference internal" href="_modules/uright/inkutils.html#user_normalized_ink"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.inkutils.user_normalized_ink" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">uright.inkutils.</tt><tt class="descname">user_normalized_ink</tt><big>(</big><em>user_raw_ink</em>, <em>timestamp=False</em><big>)</big><a class="reference internal" href="_modules/uright/inkutils.html#user_normalized_ink"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.inkutils.user_normalized_ink" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </div>
@@ -373,10 +171,14 @@ using the Dynamic Time Warping distance.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>alpha</strong> : float</p>
-<blockquote class="last">
+<blockquote>
 <div><p>Weighting between location distance and direction distance.
 If alpha=1.0, the direction distance is ignored. If alpha=0.0,
 the location distance is ignored.</p>
+</div></blockquote>
+<p><strong>avg_dist</strong> : float</p>
+<blockquote class="last">
+<div><p>The average distance to from the prototype to instances</p>
 </div></blockquote>
 </td>
 </tr>
@@ -393,7 +195,8 @@ the location distance is ignored.</p>
 <dt id="uright.prototype.PrototypeDTW.score">
 <tt class="descname">score</tt><big>(</big><em>obs</em><big>)</big><a class="reference internal" href="_modules/uright/prototype.html#PrototypeDTW.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.prototype.PrototypeDTW.score" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the score of an observation.</p>
-<p>The score is defined as negative of the DTW distance.</p>
+<p>The score is defined as negative of the DTW distance
+normalized by the expected value.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -412,7 +215,7 @@ the location distance is ignored.</p>
 
 <dl class="method">
 <dt id="uright.prototype.PrototypeDTW.train">
-<tt class="descname">train</tt><big>(</big><em>obs</em>, <em>obs_weights=None</em>, <em>center_type='medoid'</em><big>)</big><a class="reference internal" href="_modules/uright/prototype.html#PrototypeDTW.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.prototype.PrototypeDTW.train" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">train</tt><big>(</big><em>obs</em>, <em>obs_weights=None</em>, <em>center_type='centroid'</em>, <em>state_reduction=False</em><big>)</big><a class="reference internal" href="_modules/uright/prototype.html#PrototypeDTW.train"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.prototype.PrototypeDTW.train" title="Permalink to this definition">¶</a></dt>
 <dd><p>Estimates the prototype from a set of observations.</p>
 </dd></dl>
 
@@ -475,15 +278,20 @@ be set to 0.5 * average length of the observations.</p>
 
 <dl class="method">
 <dt id="uright.prototype.PrototypeHMM.score">
-<tt class="descname">score</tt><big>(</big><em>obs</em><big>)</big><a class="reference internal" href="_modules/uright/prototype.html#PrototypeHMM.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.prototype.PrototypeHMM.score" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">score</tt><big>(</big><em>obs</em>, <em>last_state_only=True</em><big>)</big><a class="reference internal" href="_modules/uright/prototype.html#PrototypeHMM.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#uright.prototype.PrototypeHMM.score" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculates the score of an observation.</p>
-<p>The score is defined as the log likelihood of the observation
-under the model.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns :</th><td class="field-body"><strong>(loglikelihood, fwdlattice)</strong> :</td>
+<tr class="field-odd field"><th class="field-name">Returns :</th><td class="field-body"><p class="first"><strong>score</strong> : float</p>
+<blockquote class="last">
+<div><p>If last_state_only=False, the score is defined as the log
+likelihood of the observation under the model. Otherwise,
+the score is defined as the log likelihood at the last state
+only.</p>
+</div></blockquote>
+</td>
 </tr>
 </tbody>
 </table>
@@ -565,7 +373,7 @@ under the model.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">uright Package</a><ul>
-<li><a class="reference internal" href="#module-uright._beam_dtw"><tt class="docutils literal"><span class="pre">_beam_dtw</span></tt> Module</a></li>
+<li><a class="reference internal" href="#beam-dtw-module"><tt class="docutils literal"><span class="pre">_beam_dtw</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-uright._dtwc"><tt class="docutils literal"><span class="pre">_dtwc</span></tt> Module</a></li>
 <li><a class="reference internal" href="#kmeans-module"><tt class="docutils literal"><span class="pre">_kmeans</span></tt> Module</a></li>
 <li><a class="reference internal" href="#linkage-module"><tt class="docutils literal"><span class="pre">_linkage</span></tt> Module</a></li>
