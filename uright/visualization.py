@@ -4,11 +4,33 @@ from matplotlib.patches import Circle
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 
+def display_prototypes(classifier, fig_width=20, row_height=4,
+                       n_per_row=6):
+    """Display prototype
 
-def draw_ink(ax, ink, node_size=0.1, 
-             penup_color='#0000FF',
-             pendown_color='#00FF00',
-             node_colors=None,
+    Arguments
+    ---------
+    classifier : Classifier
+
+    """
+    prototypes = classifier.trained_prototypes
+    n_rows, rem = divmod(len(prototypes), n_per_row)
+    if rem > 0: n_rows += 1
+    fig = plt.figure(figsize=(fig_width, row_height*n_rows))
+    counter = 1
+    for prot in prototypes:
+        ax = fig.add_subplot(n_rows, n_per_row, counter)
+        draw_ink(ax, prot.model, show_order=True)
+        ax.set_ylim(2.5,-2.5)
+        ax.set_xlim(-2,2)
+        ax.set_title("Prototype for %s [%d]"%(prot.label,prot.num_obs))
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        counter += 1
+    return fig
+
+def draw_ink(ax, ink, node_size=0.1, penup_color='#0000FF',
+             pendown_color='#00FF00', node_colors=None,
              show_order=False):
     current_stroke_id = 0
     for i in range(ink.shape[0]):
@@ -51,12 +73,4 @@ def draw_ink(ax, ink, node_size=0.1,
                      head_width=0.03, head_length=0.02,
                      length_includes_head=True)            
 
-    # adjust plot size
     ax.axis('equal')
-    #ax.axis('scaled')
-    #ax.set_xlim(np.nanmin(ink[:,0])-0.2,
-    #            np.nanmax(ink[:,0])+0.2)
-    #ax.set_ylim(np.nanmax(ink[:,1])+0.2,
-    #            np.nanmin(ink[:,1])-0.2)
-    #ax.set_xticks([])
-    #ax.set_yticks([])
