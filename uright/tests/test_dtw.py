@@ -106,13 +106,13 @@ class TestComputeDTWDistance(_BaseTest):
                                  self.ink2,
                                  alpha=0.5,
                                  penup_z=10),
-            0.058, delta=1e-3)
+            0.100, delta=1e-3)
         self.assertAlmostEqual(
             compute_dtw_distance(self.ink1,
                                  self.ink3,
                                  alpha=0.5,
                                  penup_z=10), 
-            0.044, delta=1e-3)
+            0.053, delta=1e-3)
 
 class TestComputeDTWVector(_BaseTest):
     def test_sanity(self):

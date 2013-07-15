@@ -41,24 +41,24 @@ class TestPrototypeDTW(_BaseTest):
     def test_score(self):
         score0 = self.p.score(self.ink_data[0])
         if VERBOSE: print score0
-        self.assertAlmostEqual(score0, -1.247, delta=1e-3)
+        self.assertAlmostEqual(score0, -0.088, delta=1e-3)
         score1 = self.p.score(self.ink_data[1])
         if VERBOSE: print score1
-        self.assertAlmostEqual(score1, -1.161, delta=1e-3)
+        self.assertAlmostEqual(score1, -0.049, delta=1e-3)
         
     def test_centroid(self):
         q = PrototypeDTW('u', alpha=0.5)
         q.train(self.ink_data, center_type="centroid")
         score0 = q.score(self.ink_data[0])
         if VERBOSE: print score0
-        self.assertAlmostEqual(score0, -1.369, delta=1e-3)
+        self.assertAlmostEqual(score0, -0.088, delta=1e-3)
 
     def test_state_reduction(self):
         q = PrototypeDTW('u', alpha=0.5)
         q.train(self.ink_data, center_type="centroid", state_reduction=True)
         score0 = q.score(self.ink_data[0])
         if VERBOSE: print score0
-        self.assertAlmostEqual(score0, -1.370, delta=1e-3)
+        self.assertAlmostEqual(score0, -0.089, delta=1e-3)
 
 
 class TestPrototypeHMM(_BaseTest):

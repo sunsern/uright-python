@@ -93,7 +93,7 @@ class TestKMeansHMM(_BaseTest):
         chmm = ClassifierHMM()
         chmm.train(clustered_data)
         accuracy,_,_ = chmm.test(self.label_ink_pairs)
-        self.assertGreater(accuracy, 96.0)
+        self.assertGreater(accuracy, 94.0)
 
     def test_specific_target(self):
         km = ClusterKMeans(self.user_ink_data, 

@@ -12,7 +12,7 @@ from classifier import (ClassifierDTW,
                         ClassifierHMM,
                         ClassifierBeam)
 
-VERBOSE=True
+VERBOSE=False
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
