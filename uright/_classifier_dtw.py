@@ -63,3 +63,13 @@ class ClassifierDTW(_Classifier):
         info = super(ClassifierDTW,self).toJSON()
         info['classifier_type'] = 'DTW'
         return info
+
+    def fromJSON(self, json_obj):
+        prototypes = json_obj['prototypes']
+        self._trained_prototypes = []
+        self.log_priors = np.zeros(len(prototypes))
+        for i, prototype in enumerate(prototypes):
+            p = PrototypeDTW(prototype['label'], prototype['alpha'])
+            p.fromJSON(prototype)
+            self._trained_prototypes.append(p)
+            self.log_priors[i] = np.log(prototype['prior'])
