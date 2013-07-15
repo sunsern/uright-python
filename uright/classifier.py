@@ -95,7 +95,7 @@ class _Classifier(object):
         for i in range(len(self._trained_prototypes)):
             p = self._trained_prototypes[i]
             proto_info = p.toJSON()
-            proto_info['prior'] = np.exp(self.log_priors[i]).astype(float16)
+            proto_info['prior'] = float(np.exp(self.log_priors[i]))
             prototypes.append(proto_info)
         return {'prototypes':prototypes}
     

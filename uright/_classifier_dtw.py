@@ -61,5 +61,5 @@ class ClassifierDTW(_Classifier):
 
     def toJSON(self):
         info = super(ClassifierDTW,self).toJSON()
-        info['prototype_type'] = 'DTW'
+        info['classifier_type'] = 'DTW'
         return info

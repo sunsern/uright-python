@@ -49,5 +49,5 @@ class ClassifierHMM(_Classifier):
         
     def toJSON(self):
         info = super(ClassifierHMM,self).toJSON()
-        info['prototype_type'] = 'HMM'
+        info['classifier_type'] = 'HMM'
         return info
