@@ -19,20 +19,7 @@ _T_IDX  = INK_STRUCT['T_IDX']
 
 _EPS = 1e-10
 
-def json2array(ink,timestamp=False):
-    """Convert a json ink into a numpy array.
-
-    Parameters
-    ----------
-    timestamp : bool
-       If true, the output array also includes timestamps.
-
-    Returns
-    -------
-    (N x D) array where N is the number of points. Each row is
-    [x,y,dx,dy,pen-up, {t}]
-
-    """
+def _json2array_uright2(ink,timestamp=False):
     all_points = []
     
     if timestamp:
@@ -69,6 +56,72 @@ def json2array(ink,timestamp=False):
             all_points.append(vec)
         all_points.append(penup)
     return np.asarray(all_points)
+
+
+def _json2array_uright3(ink,timestamp=False):
+    all_points = []
+    
+    if timestamp:
+        penup = np.empty(6)
+    else:
+        penup = np.empty(5)
+    penup[:] = np.nan
+    penup[_PU_IDX] = 1
+
+    previous_point = None
+    for point in ink['points']:
+        # allocate space
+        if timestamp:
+            vec = np.zeros(6)                
+            vec[_T_IDX] = point['t']
+        else:
+            vec = np.zeros(5)
+
+        # regular points
+        if point['penup'] < 1:           
+            vec[_X_IDX] = float(point['x'])
+            vec[_Y_IDX] = float(point['y'])
+            dx = 0.0
+            dy = 0.0
+            if previous_point is not None:
+                (px,py) = previous_point
+                dx = vec[_X_IDX] - px 
+                dy = vec[_Y_IDX] - py
+                # normalize by the norm
+                z = np.sqrt(dx*dx + dy*dy)
+                dx = dx / max(z, _EPS)
+                dy = dy / max(z, _EPS)
+            vec[_DX_IDX] = dx
+            vec[_DY_IDX] = dy
+            vec[_PU_IDX] = 0
+            all_points.append(vec)
+            previous_point = (vec[_X_IDX],vec[_Y_IDX])
+        else:
+            all_points.append(penup)
+            previous_point = None
+
+    return np.asarray(all_points)
+
+
+def json2array(ink,timestamp=False,version='uright2'):
+    """Convert a json ink into a numpy array.
+
+    Parameters
+    ----------
+    timestamp : bool
+       If true, the output array also includes timestamps.
+
+    Returns
+    -------
+    (N x D) array where N is the number of points. Each row is
+    [x,y,dx,dy,pen-up, {t}]
+
+    """
+    if version == 'uright2':
+        return _json2array_uright2(ink,timestamp=timestamp)
+    else:
+        return _json2array_uright3(ink,timestamp=timestamp)
+
 
 def center_ink(ink):
     """Center the ink at x=0"""
@@ -117,22 +170,22 @@ def normalize_ink(ink):
     """Normalize using bounding box"""
     return scale_ink(center_ink(ink))
 
-def filter_bad_ink(ink_list, min_length=3):
+def filter_bad_ink(ink_list, min_length=3, version='uright2'):
     """Filter out bad ink"""
-    all_ink = map(json2array, ink_list)
+    all_ink = map(lambda x: json2array(x,version=version), ink_list)
     filtered = [ink_list[i]
                 for i in range(len(ink_list))
                 if all_ink[i].shape[0] > min_length]
     return filtered
 
-def user_normalized_ink(user_raw_ink, timestamp=False):
+def user_normalized_ink(user_raw_ink, timestamp=False, version='uright2'):
     normalized_ink = {}
     for userid, raw_ink in user_raw_ink.iteritems():
         temp = {}
         for label, ink_list in raw_ink.iteritems():
             temp[label] = [
                 np.nan_to_num(normalize_ink(
-                        json2array(ink, timestamp=timestamp))) 
-                for ink in filter_bad_ink(ink_list)]
+                        json2array(ink, timestamp=timestamp, version=version))) 
+                for ink in filter_bad_ink(ink_list, version=version)]
         normalized_ink[userid] = temp
     return normalized_ink
