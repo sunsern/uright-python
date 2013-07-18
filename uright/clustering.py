@@ -39,6 +39,7 @@ class _BaseClusterer(object):
                  min_cluster_size=10, maxclust=4, 
                  target_weight_multiplier=1.0,
                  equal_total_weight=True):
+
         self.user_ink_data = user_ink_data
         self.target_user_id = target_user_id
         self.min_cluster_size = min_cluster_size
@@ -71,6 +72,7 @@ class _BaseClusterer(object):
                     w = target_weight * target_weight_multiplier
                 else:
                     w = 1.0
+
                 weighted_ink += [(ink, w) 
                                  for ink in user_ink_data[userid][label]]
             self.weighted_ink_data.append(weighted_ink)

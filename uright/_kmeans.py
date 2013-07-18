@@ -107,16 +107,19 @@ def _partition_subset(packed_data, verbose=False):
 class ClusterKMeans(clustering._BaseClusterer):
     """Cluster data with K-means algorithm"""
     def __init__(self, user_ink_data, target_user_id=None, 
-                 min_cluster_size=5, maxclust=4, 
                  random_state=None, algorithm='hmm',
-                 target_weight_multiplier=1.0):
+                 min_cluster_size=5, maxclust=4, 
+                 target_weight_multiplier=1.0,
+                 equal_total_weight=True):
+
         clustering._BaseClusterer.__init__(
             self, 
             user_ink_data, 
             target_user_id=target_user_id, 
             min_cluster_size=min_cluster_size, 
             maxclust=maxclust,
-            target_weight_multiplier=target_weight_multiplier)
+            target_weight_multiplier=target_weight_multiplier,
+            equal_total_weight=equal_total_weight)
 
         np.random.seed(random_state)
         
