@@ -14,7 +14,8 @@ VERBOSE=False
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
-        fn = os.path.join(os.path.dirname(__file__), 'clustered_data.p')
+        fn = os.path.join(os.path.dirname(__file__), 
+                          'fixtures/clustered_data.p')
         candidate_proto = pickle.load(open(fn,"rb"))
         # set test label
         self.label = 'u'

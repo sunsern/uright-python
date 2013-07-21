@@ -13,7 +13,8 @@ from clustering import ClusterLinkage
 
 class _BaseTest(unittest.TestCase):
     def setUp(self):
-        fn = os.path.join(os.path.dirname(__file__), 'raw_ink.p')
+        fn = os.path.join(os.path.dirname(__file__), 
+                          'fixtures/raw_ink.p')
         user_raw_ink = pickle.load(open(fn,"rb"))
         
         # fix random seed
