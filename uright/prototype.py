@@ -86,6 +86,7 @@ class PrototypeDTW(_Prototype):
         _Prototype.__init__(self, label)
         self.alpha = alpha
         self.avg_dist = 1.0
+        self.total_weight = 0.0
 
     def train(self, obs, obs_weights=None, 
               center_type='centroid', state_reduction=False):
@@ -148,6 +149,9 @@ class PrototypeDTW(_Prototype):
             
         self.avg_dist = _compute_avg_dist(self.model, obs, 
                                           obs_weights, self.alpha)
+
+        self.total_weight = obs_weights.sum()
+
         return -self.avg_dist
 
     def score(self, obs):
