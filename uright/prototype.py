@@ -13,7 +13,9 @@ from sklearn.hmm import normalize
 from _state_reduction import _state_reduction
 from dtw import compute_dtw_distance, compute_dtw_vector
 from weightedhmm import WeightedGaussianHMM 
-from inkutils import update_directions
+from inkutils import update_directions, INK_STRUCT
+
+_PU_IDX = INK_STRUCT['PU_IDX']
 
 def _compute_avg_dist(model, obs, obs_weights, alpha):
     #dist_from_model = np.asarray(
@@ -89,7 +91,9 @@ class PrototypeDTW(_Prototype):
         self.total_weight = 0.0
 
     def train(self, obs, obs_weights=None, 
-              center_type='centroid', state_reduction=False):
+              center_type='centroid', 
+              state_reduction=False,
+              ignore_outliers=True):
         """Estimates the prototype from a set of observations."""
 
         def _find_medoid(obs, obs_weights, distmat):
@@ -99,18 +103,43 @@ class PrototypeDTW(_Prototype):
                            obs_weights.sum())
             return avg_distmat.argmin()
 
-        def _find_centroid(obs, obs_weights, medoid):
+        def _find_centroid(obs, obs_weights, medoid_idx, distmat):
             n_features = obs[0].shape[1]
+            medoid = obs[medoid_idx]
+
+            # Ignore outliers by setting their weights to 0 
+            if ignore_outliers:
+                dist_mean = distmat[medoid_idx,:].mean()
+                dist_std = distmat[medoid_idx,:].std().clip(min=1e-6)
+                for i in xrange(len(obs)):
+                    if (distmat[medoid_idx, i] - dist_mean) / dist_std > 3.0:
+                        obs_weights[i] = 0.0
+
+            # Ignore examples that doesn't have the same number of strokes
+            medoid_n_strokes = medoid[:,_PU_IDX].sum()
+            for i,o in enumerate(obs):
+                if o[:,_PU_IDX].sum() != medoid_n_strokes:
+                    obs_weights[i] = 0.0
+
             f = [compute_dtw_vector(medoid, ink) for ink in obs]
             feature_mat = np.vstack(f)
             feature_mat = np.nan_to_num(feature_mat)
             weighted_feature_mat = feature_mat * np.tile(
                 obs_weights, (feature_mat.shape[1],1)).T
+
             # reconstruct weighted-average ink
             mean_ink = (weighted_feature_mat.sum(axis=0) / 
                         obs_weights.sum())
             mean_ink = mean_ink.reshape((-1,n_features), order='C')
             mean_ink = mean_ink + medoid
+
+            # make sure pen-up is binary
+            mean_ink[:,_PU_IDX] = mean_ink[:,_PU_IDX].round()
+            
+            # number of penups is off, fallback to medoid
+            if mean_ink[:,_PU_IDX].sum() != medoid_n_strokes:
+                return medoid
+          
             # It seems like not updating the direction yeilds 
             # a better result.
             #return update_directions(mean_ink)
@@ -139,7 +168,7 @@ class PrototypeDTW(_Prototype):
         # compute the center
         if center_type == 'centroid':
             medoid_idx = _find_medoid(obs, obs_weights, distMat)
-            self.model = _find_centroid(obs, obs_weights, obs[medoid_idx])
+            self.model = _find_centroid(obs, obs_weights, medoid_idx, distMat)
         else:
             medoid_idx = _find_medoid(obs, obs_weights, distMat)
             self.model = obs[medoid_idx].copy()
@@ -174,6 +203,7 @@ class PrototypeDTW(_Prototype):
         info['alpha'] = self.alpha
         info['center'] = self.model.astype(np.float16).tolist()
         info['avg_dist'] = self.avg_dist
+        info['total_weight'] = self.total_weight
         return info
 
     def fromJSON(self,jsonObj):
@@ -182,7 +212,6 @@ class PrototypeDTW(_Prototype):
         self.alpha = jsonObj['alpha']
         self.model = np.asarray(jsonObj['center'])
         self.avg_dist = jsonObj['avg_dist']
-
 
 
 class PrototypeHMM(_Prototype):

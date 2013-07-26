@@ -21,7 +21,7 @@ def compute_dtw_distance(ink_array1, ink_array2, alpha=0.5, penup_z=10.0):
 
     return _execute_dtw_in_c(combined_d, m , n)
 
-def compute_dtw_vector(center_ink, ink_array, alpha=0.5, penup_z=10.0):
+def compute_dtw_vector(center_ink, ink_array, alpha=0.5, penup_z=1000.0):
     """Returns a vector representing the difference between 
     `center_ink` and time-warped `ink_array`. The output vector 
     always has the same length as `center_ink`."""
@@ -69,14 +69,6 @@ def compute_dtw_vector(center_ink, ink_array, alpha=0.5, penup_z=10.0):
         else:
             i -= 1
             j -= 1
-
-    # do not match pen-up
-    for i in xrange(1,n):
-        if (center_ink[i,_PU_IDX] < 1 and ink_array[mapping[i],_PU_IDX] > 0):
-            # find a nearby point that is not a pen-up
-            j = i - 1
-            while ink_array[mapping[j],_PU_IDX] > 0: j = j - 1
-            mapping[i] = mapping[j]
 
     diff_array = ink_array[mapping,:] - center_ink
     return diff_array.reshape(-1)
