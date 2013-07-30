@@ -2,6 +2,12 @@ uright-python
 =============
 Python code for uRight project
 
+Requirements
+============
+<pre>
+pip install -r requirements.txt
+</pre>
+
 Installation
 ============
 <pre>

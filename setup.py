@@ -1,13 +1,14 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
-
+import numpy
 import uright
 
 ext_modules = [
     Extension("uright._dtwc", 
               ["uright/_dtwc.pyx"],
-              libraries=["m"])]
+              libraries=["m"],
+              include_dirs=[numpy.get_include(),])]
 
 setup(name='uRight',
       version=uright.__version__,
