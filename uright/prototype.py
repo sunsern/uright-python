@@ -110,10 +110,13 @@ class PrototypeDTW(_Prototype):
             # Ignore outliers by setting their weights to 0 
             if ignore_outliers:
                 dist_mean = distmat[medoid_idx,:].mean()
-                dist_std = distmat[medoid_idx,:].std().clip(min=1e-6)
-                for i in xrange(len(obs)):
-                    if (distmat[medoid_idx, i] - dist_mean) / dist_std > 3.0:
-                        obs_weights[i] = 0.0
+                dist_std = distmat[medoid_idx,:].std()
+                # only remove outliers when std is not too small
+                if dist_std > 1e-3:
+                    for i in xrange(len(obs)):
+                        if ((distmat[medoid_idx, i] - dist_mean) / 
+                            dist_std > 3.0):
+                            obs_weights[i] = 0.0
 
             # Ignore examples that doesn't have the same number of strokes
             medoid_n_strokes = medoid[:,_PU_IDX].sum()
