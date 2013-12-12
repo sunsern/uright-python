@@ -66,11 +66,12 @@ def draw_ink(ax, ink, node_size=0.1, penup_color='#0000FF',
             z = np.sqrt(dx*dx+dy*dy)
             dx = dx / max(z,1e-5)
             dy = dy / max(z,1e-5)
-            ax.arrow(ink[i,0]-0.5*node_size*dx,
-                     ink[i,1]-0.5*node_size*dy,
-                     node_size*dx, node_size*dy,
-                     fc="k", ec="k", alpha=0.5, width=0.007,
-                     head_width=0.03, head_length=0.02,
-                     length_includes_head=True)            
+            if abs(dx) > 0 or abs(dy) > 0:
+                ax.arrow(ink[i,0]-0.5*node_size*dx,
+                         ink[i,1]-0.5*node_size*dy,
+                         node_size*dx, node_size*dy,
+                         fc="k", ec="k", alpha=0.5, width=0.007,
+                         head_width=0.03, head_length=0.02,
+                         length_includes_head=True)            
 
     ax.axis('equal')
